@@ -1,0 +1,106 @@
+```json
+{
+  // Cold Graphite — a quieter, cooler room. Steel blue instead of champagne,
+  // graphite surfaces instead of pure obsidian, and a light theme that reads
+  // like blueprint paper rather than warm alabaster.
+  "onyx": "theme",
+  "version": 1,
+  "name": "Cold Graphite",
+
+  "appearance": {
+    "theme": "dark",
+    "accent": "#4f8fbf",
+    "uiFont": "neutral",
+    "numericFont": "sf-mono",
+    "sizeScale": "normal"
+  },
+
+  "base": {
+    "r-control": "3px",
+    "r-panel": "12px",
+    "ls-label": "0.16em",
+    // slightly wider bars: this look is about calm, not density
+    "wf-bar-step": 6,
+    "wf-bar-duty": 0.55,
+  },
+
+  "dark": {
+    // surfaces — graphite, very slightly blue
+    "ink-900": "#0b0e11",
+    "ink-850": "#0e1216",
+    "ink-800": "#11161b",
+    "ink-700": "#161c22",
+    "surface-panel": "rgba(18, 23, 28, 0.96)",
+    "surface-menu": "rgba(20, 26, 32, 0.97)",
+    "surface-toast": "rgba(20, 26, 32, 0.95)",
+    "surface-card": "rgba(17, 22, 27, 0.98)",
+    "scrim": "rgba(4, 7, 10, 0.74)",
+
+    // text stays near-white: this is a tool, not a poster
+    "text-hi": "rgba(233, 240, 246, 0.94)",
+    "text-mid": "rgba(233, 240, 246, 0.6)",
+    "text-lo": "rgba(233, 240, 246, 0.34)",
+    "text-faint": "rgba(233, 240, 246, 0.18)",
+
+    "hairline": "rgba(190, 215, 235, 0.08)",
+    "hairline-strong": "rgba(190, 215, 235, 0.14)",
+    "hairline-soft": "rgba(190, 215, 235, 0.045)",
+
+    "ink-on-accent-dark": "var(--ink-900)",
+    "ink-on-accent-light": "#eef4f8",
+
+    // decks: keep the two lanes far apart in hue
+    "deck-b-src": "#c98f5a",
+    "deck-b-ink": "#1a1206",
+
+    // meter scale — same four jobs, cooler greens, hotter reds
+    "m-safe": "#5bc98f",
+    "m-safe-rgb": "91 201 143",
+    "m-warn": "#d8c98a",
+    "m-warn-rgb": "216 201 138",
+    "m-hot": "#e08a4f",
+    "m-hot-rgb": "224 138 79",
+    "m-clip": "#e2504a",
+    "m-clip-rgb": "226 80 74",
+    "m-clip-hi": "#ff9a95",
+
+    "wf-mid": "rgba(190, 215, 235, 0.08)",
+    "wf-skeleton": "rgba(190, 215, 235, 0.055)",
+    "wf-scrim": "rgba(6, 9, 12, 0.7)",
+    "wf-outer-a": 0.5,
+    "wf-core-a": 0.98,
+    "wf-cap-a": 0.3,
+    "lane-masked-rgb": "170 182 194",
+
+    "tip-bg": "rgba(11, 14, 17, 0.94)",
+    "tip-text": "rgba(233, 240, 246, 0.94)",
+
+    "eq-spec-top": "rgb(var(--accent-rgb) / 0.1)",
+    "eq-spec-bottom": "rgb(var(--accent-deep-rgb) / 0.04)",
+    "eq-curve": "rgb(var(--accent-rgb) / 0.96)",
+
+    "shadow-float": "0 26px 64px rgba(0, 0, 0, 0.66), 0 1px 0 rgba(190, 215, 235, 0.05) inset",
+  },
+
+  "light": {
+    // blueprint paper: cool, pale, still warm enough not to glare
+    "ink-900": "#e8ecef",
+    "ink-850": "#eef1f4",
+    "ink-800": "#f4f6f8",
+    "ink-700": "#fafbfc",
+    "surface-panel": "rgba(250, 251, 252, 0.97)",
+    "surface-menu": "rgba(252, 253, 253, 0.98)",
+    "text-hi": "rgba(20, 28, 34, 0.94)",
+    "text-mid": "rgba(20, 28, 34, 0.68)",
+    "text-lo": "rgba(20, 28, 34, 0.48)",
+    "text-faint": "rgba(20, 28, 34, 0.3)",
+    "hairline": "rgba(30, 45, 60, 0.14)",
+    "hairline-strong": "rgba(30, 45, 60, 0.24)",
+    "deck-b-src": "#8a5a22",
+    "deck-b-ink": "#fdf6ee",
+    "tip-bg": "rgba(252, 253, 253, 0.96)",
+    "tip-text": "rgba(20, 28, 34, 0.94)",
+    "wf-scrim": "rgba(238, 241, 244, 0.46)"
+  }
+}
+```

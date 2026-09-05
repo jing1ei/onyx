@@ -1,0 +1,64 @@
+# The three Playwright harnesses, on demand.
+#
+# They are not part of CI: they assert *rendered* geometry — 22 px minimum
+# targets, 8.5 px minimum text, integral canvas backing stores, nothing
+# overflowing — and a CI runner's font stack is not the one a reviewer has.
+# A failure here can therefore mean "the runner has different fonts" as easily
+# as "the layout broke", which is not a signal worth blocking a merge on.
+#
+# What they are worth is a look: run this workflow, download the artifact and
+# you have 55 screenshots of the UI in both themes, plus the assertions that
+# went with them. `CONSOLE: clean` at the end of each is the real verdict —
+# anything else means the pictures are evidence of a bug, not a release.
+#
+# Run it from the Actions tab (Run workflow), or:
+#   gh workflow run shots.yml
+name: Screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  shots:
+    name: mock preview · 55 screenshots and their assertions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: install the chromium playwright drives
+        run: npx playwright install --with-deps chromium
+
+      - name: build the mock bundle
+        run: npm run build:mock
+
+      - name: serve it
+        run: |
+          npx vite preview --outDir dist-mock --port 4173 &
+          for _ in $(seq 1 60); do
+            curl -sSf http://localhost:4173 >/dev/null && break
+            sleep 1
+          done
+          curl -sSf http://localhost:4173 >/dev/null
+
+      - name: shots — layout, gestures, the four routes onto deck B
+        run: npm run shots -- http://localhost:4173
+
+      - name: shots:theme — both themes, accents, canvas repaint, persistence
+        run: npm run shots:theme -- http://localhost:4173
+
+      - name: shots:themedoc — the theme document, end to end
+        run: npm run shots:themedoc -- http://localhost:4173
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: onyx-screenshots
+          path: shots/
+          if-no-files-found: error
+          retention-days: 30

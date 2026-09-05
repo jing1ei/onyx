@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- both themes are designed (SPEC §14); the resolved one is set on
+         <html> by src/lib/theme.ts and `tokens.css` states `color-scheme` per
+         theme, so the UA default only ever shows before the first paint -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The detached EQ window (SPEC §12), a second document in the same bundle.
+      Its own entry point, its own stylesheet: none of the main window's
+      layout, playlist or transport code is parsed here, so the tool window
+      starts as a curve editor and nothing else.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Cpath d='M4 20c5 0 6-9 11-9s6 6 13 2' fill='none' stroke='%23e8d9a0' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <title>Onyx — Equaliser</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/eq/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Least privilege for the one Onyx window. The webview may listen to and emit events (the three onyx:// streams of SPEC §3.2 plus onyx://client-log of §13), drag / double-click-maximise the custom title bar of §4, and drive the three window buttons that title bar draws on Windows and Linux (macOS keeps its own traffic lights) — nothing else. Everything the app can actually do goes through its own #[tauri::command] surface (SPEC §3.1), which the webview cannot widen. The dialog / opener / log / single-instance / window-state plugins are driven from Rust only, so no plugin permission is granted here at all: a compromised renderer gets no file picker, no shell, no URL opener and no second window. `tauri-plugin-fs` is not registered at all any more — Onyx reads files with std::fs from Rust, so the webview has no file system to be given access to. `core:default` used to be listed instead, which additionally handed out every window/webview/monitor getter, the menu and tray builders, image-from-path and the devtools toggle — none of which the front end calls.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close"
+  ]
+}

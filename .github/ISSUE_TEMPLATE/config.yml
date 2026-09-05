@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How Onyx works
+    url: https://github.com/jing1ei/onyx/blob/main/README.md
+    about: The README covers what it plays, A/B, metering, theming, the keyboard map and the known limitations.
+  - name: The contract
+    url: https://github.com/jing1ei/onyx/blob/main/SPEC.md
+    about: SPEC.md is authoritative for the IPC surface and the behaviour rules — check it before reporting a behaviour as wrong.
+  - name: Working on Onyx
+    url: https://github.com/jing1ei/onyx/blob/main/CONTRIBUTING.md
+    about: The layer map, every check and what it guards, and the invariants that must not break.

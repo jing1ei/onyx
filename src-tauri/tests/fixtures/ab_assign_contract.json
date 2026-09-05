@@ -1,0 +1,29 @@
+{
+  "_": "The A/B assignment contract (SPEC §2.8), shared by two implementations of one backend. Rust: src-tauri/src/abrules.rs, pinned by src-tauri/tests/ab_assign_contract.rs. TypeScript: src/lib/mock.ts, driven through these same cases by scripts/check-ab-parity.mjs (npm run check:ab). Neither may move without the other failing.",
+  "cases": [
+    {
+      "name": "assigning deck B turns A/B on",
+      "deck": "b",
+      "abEnabledBefore": false,
+      "abEnabledAfter": true
+    },
+    {
+      "name": "assigning deck B with A/B already on leaves it on",
+      "deck": "b",
+      "abEnabledBefore": true,
+      "abEnabledAfter": true
+    },
+    {
+      "name": "assigning deck A does not turn A/B on",
+      "deck": "a",
+      "abEnabledBefore": false,
+      "abEnabledAfter": false
+    },
+    {
+      "name": "assigning deck A never turns A/B off",
+      "deck": "a",
+      "abEnabledBefore": true,
+      "abEnabledAfter": true
+    }
+  ]
+}

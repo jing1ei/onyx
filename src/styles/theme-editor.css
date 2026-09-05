@@ -1,0 +1,506 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Onyx — the theme editor (SPEC §20)
+
+   Loaded by two documents:
+
+     · `theme.html` (the editor window), where it is the only stylesheet
+       besides `tokens.css`, and therefore has to carry the handful of shared
+       primitives that window uses — `.ghost-btn`, `.spacer`, the toasts. The
+       EQ window's sheet does the same thing for the same reason: three copies
+       of nine lines is cheaper than a fourth stylesheet whose load order every
+       document must get right;
+     · the settings panel, through `ThemeEditor.tsx`'s own import, where
+       `app.css` and `settings.css` are already present. The rules below are
+       either scoped under `.theme-editor` / `.theme-window` or are exact
+       repeats of the shared ones, so nothing here can restyle the main window.
+
+   Every colour is a token. The editor is themed by the *designed* themes even
+   when a document is in force (see `ignoreThemeDoc()` in `lib/theme.ts`) —
+   which is precisely why it must not hard-code a colour: it still has to
+   follow dark/light and the accent.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── the window ────────────────────────────────────────────────────────── */
+
+.theme-window {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--ink-900);
+}
+
+.tw-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--hairline);
+  min-width: 0;
+}
+
+.tw-title {
+  font-size: 10px;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-mid);
+  font-weight: 500;
+  flex: none;
+}
+
+/* What is in force right now, so the window can be trusted as a read-out of
+   the app's state and not only as a text box. */
+.tw-state {
+  font-size: 10.5px;
+  color: var(--text-lo);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tw-state b {
+  color: var(--text-hi);
+  font-weight: 500;
+}
+
+.tw-body {
+  min-height: 0;
+  padding: 12px 16px 14px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* ── the editor itself ─────────────────────────────────────────────────── */
+
+.theme-editor {
+  min-height: 0;
+  display: grid;
+  /* toolbar · code · status · problems · contrast · footer */
+  grid-template-rows: auto minmax(120px, 1fr) auto auto auto auto;
+  gap: 9px;
+}
+
+.te-bar,
+.te-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.te-bar .spacer,
+.te-status .spacer,
+.tw-head .spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.te-code {
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-panel);
+  background: var(--well-canvas, rgb(var(--accent-rgb) / 0.02));
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-hi);
+  font-size: 11.5px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  user-select: text;
+  cursor: text;
+}
+.te-code::placeholder {
+  color: var(--text-faint);
+}
+.te-code:focus-visible {
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.5);
+}
+/* A document with errors in it says so from the frame as well as from the
+   list: the list can be scrolled out of sight, the frame cannot. */
+.te-code[data-bad="true"] {
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.55);
+}
+
+/* ── status line ───────────────────────────────────────────────────────── */
+
+.te-ok,
+.te-bad,
+.te-warn,
+.te-chip {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--r-control);
+}
+.te-ok {
+  color: var(--m-safe);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-safe-rgb) / 0.3);
+}
+.te-bad {
+  color: var(--m-clip);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.4);
+}
+.te-warn {
+  color: var(--m-warn);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-warn-rgb) / 0.35);
+}
+.te-chip {
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+/* ── problems ──────────────────────────────────────────────────────────── */
+
+.te-problems {
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  max-height: 168px;
+  overflow: auto;
+  border-radius: var(--r-panel);
+  background: var(--fill-ghost, rgb(var(--accent-rgb) / 0.03));
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+.te-problems li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+.te-problems li[data-level="error"] .te-line {
+  color: var(--m-clip);
+}
+.te-problems li[data-level="warning"] .te-line {
+  color: var(--m-warn);
+}
+/* The line number is the whole point of the list: it is a button, it is in the
+   numeric face, and it puts the caret on that line. */
+.te-line {
+  flex: none;
+  min-width: 30px;
+  text-align: right;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.te-msg {
+  color: var(--text-mid);
+  min-width: 0;
+}
+.te-hint {
+  color: var(--accent);
+  font-style: normal;
+}
+.te-more {
+  color: var(--text-faint);
+  padding-top: 4px;
+}
+
+/* ── contrast findings ─────────────────────────────────────────────────── */
+
+.te-contrast {
+  padding: 8px 10px;
+  border-radius: var(--r-panel);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-warn-rgb) / 0.35);
+  background: rgb(var(--m-warn-rgb) / 0.06);
+  font-size: 11px;
+  user-select: text;
+}
+.te-contrast-head {
+  color: var(--m-warn);
+  margin-bottom: 4px;
+}
+.te-contrast ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 120px;
+  overflow: auto;
+}
+.te-contrast li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text-mid);
+  padding: 1px 0;
+}
+.te-theme {
+  flex: none;
+  width: 40px;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+.te-pair {
+  flex: 1;
+  min-width: 0;
+}
+.te-ratio {
+  color: var(--m-hot);
+}
+.te-min {
+  color: var(--text-faint);
+}
+
+/* ── footer ────────────────────────────────────────────────────────────── */
+
+.te-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--hairline);
+  padding-top: 9px;
+}
+.te-foot > span {
+  flex: 1;
+  min-width: 0;
+}
+.te-foot code {
+  font-family: var(--font-num);
+  color: var(--text-lo);
+}
+
+/* ── the compact form, inside the 360 px settings panel ──────────────────
+   The same component with a third of the width taken away: the panel gives
+   the editor 328 px of content at the 1180 px default and 368 px at the
+   420 px floor (the panel grows to the viewport, the window stops shrinking),
+   and neither fits four toolbar buttons on one line. Everything below is
+   about that, and only that — the behaviour, the wording and the order of the
+   controls are the window's.
+
+   The rule the whole block follows: nothing may *overflow*, and nothing may
+   wrap ragged. A row that cannot hold its contents becomes a grid instead of
+   a wrap, because two rows of two read as a deliberate block and three plus a
+   lonely fourth reads as a mistake. */
+
+.theme-editor[data-compact] {
+  gap: 7px;
+  /* The code box is the one row that gives: everything else is its own
+     height, and the panel scrolls. */
+  grid-template-rows: auto auto auto auto auto auto;
+}
+
+/* Copy default · Copy current / Copy for agent · Validate. */
+.theme-editor[data-compact] .te-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.theme-editor[data-compact] .te-bar .ghost-btn {
+  width: 100%;
+  padding: 0 6px;
+  /* "Copy for agent" is the longest label and the smallest column: let it
+     shrink into the cell rather than push a third row. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A flex spacer in a grid is an empty cell, and an empty cell here would put
+   Validate under Copy current instead of beside Copy for agent. */
+.theme-editor[data-compact] .te-bar .spacer {
+  display: none;
+}
+
+.theme-editor[data-compact] .te-code {
+  height: 210px;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+/* Up to four chips and two buttons on one line at 328 px: it wraps, and the
+   row gap is what keeps a wrapped line from touching the one above it. A flex
+   spacer only pushes to the right on the line it happens to land on, so when
+   the chips take the whole first line it would leave Revert and Apply
+   left-aligned under them — the one place in the app where the affirmative
+   button is not on the right. An auto margin follows them onto the second
+   line; the spacer is redundant once it exists. */
+.theme-editor[data-compact] .te-status {
+  gap: 5px 6px;
+}
+.theme-editor[data-compact] .te-status .spacer {
+  display: none;
+}
+.theme-editor[data-compact] .te-status .ghost-btn {
+  margin-left: auto;
+}
+
+.theme-editor[data-compact] .te-problems {
+  max-height: 120px;
+  font-size: 10.5px;
+  padding: 7px 8px;
+}
+/* Three digits still fit; the 30 px rail is width the message needs more. */
+.theme-editor[data-compact] .te-line {
+  min-width: 22px;
+}
+.theme-editor[data-compact] .te-problems li {
+  gap: 6px;
+}
+
+/* The contrast rows are four columns of numbers in a 328 px box. The pair's
+   name is the one part that can be read at a glance from its first words, so
+   it is the one that gives — the ratio and the threshold are the point. */
+.theme-editor[data-compact] .te-contrast {
+  padding: 7px 8px;
+}
+.theme-editor[data-compact] .te-contrast li {
+  gap: 6px;
+}
+.theme-editor[data-compact] .te-theme {
+  width: 30px;
+}
+.theme-editor[data-compact] .te-pair {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theme-editor[data-compact] .te-ratio,
+.theme-editor[data-compact] .te-min {
+  flex: none;
+}
+
+/* The note wraps to three lines beside Reset appearance and that is fine;
+   what it must not do is squeeze the button until its label wraps. */
+.theme-editor[data-compact] .te-foot {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 10px;
+  padding-top: 8px;
+}
+.theme-editor[data-compact] .te-foot > span {
+  min-width: 132px;
+}
+.theme-editor[data-compact] .te-foot .ghost-btn {
+  flex: none;
+}
+
+/* ── shared primitives, for the window that has no app.css ───────────────
+   Every one of these is scoped under `.theme-window`. The same file is loaded
+   by the *main* window through `ThemeEditor.tsx`, after `app.css`, and an
+   unscoped `.toasts` here would quietly move every toast in the app on top of
+   the transport bar — a stylesheet for one window silently restyling another
+   is exactly the class of bug this whole feature must not have. */
+
+.theme-window .spacer {
+  flex: 1;
+}
+
+.theme-window .ghost-btn {
+  height: 21px;
+  padding: 0 9px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease),
+    background var(--t-hover) var(--ease);
+}
+.theme-window .ghost-btn:hover {
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: var(--fill-ghost);
+}
+.theme-window .ghost-btn:disabled {
+  opacity: 0.4;
+}
+.theme-editor .ghost-btn.accent {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.35);
+}
+.theme-window .ghost-btn.danger {
+  color: var(--m-hot);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.35);
+}
+.theme-window .ghost-btn.danger:hover {
+  color: var(--m-clip-hi);
+  background: rgb(var(--m-clip-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.55);
+}
+
+/* Apply is the one affirmative action in this window, so it is the one filled
+   control. Nothing else in Onyx is filled with the accent. */
+.theme-editor .primary-btn {
+  height: 21px;
+  padding: 0 11px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--accent);
+  transition: background var(--t-hover) var(--ease), opacity var(--t-hover) var(--ease);
+}
+.theme-editor .primary-btn:hover:not(:disabled) {
+  background: var(--accent-hi);
+}
+.theme-editor .primary-btn:active:not(:disabled) {
+  background: var(--accent-press);
+}
+.theme-editor .primary-btn:disabled {
+  opacity: 0.35;
+}
+
+.theme-window .connecting {
+  position: fixed;
+  inset: auto 16px 16px auto;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.theme-window .toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 95;
+  pointer-events: none;
+}
+.theme-window .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  max-width: 420px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: var(--surface-toast);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  backdrop-filter: blur(16px);
+  font-size: 11.5px;
+  color: var(--text-hi);
+  pointer-events: auto;
+}
+.theme-window .toast i {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
+}
+.theme-window .toast[data-kind="warn"] i {
+  background: var(--m-hot);
+}
+.theme-window .toast[data-kind="error"] i {
+  background: var(--m-clip);
+}

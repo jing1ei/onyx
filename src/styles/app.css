@@ -1,0 +1,3007 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Onyx components
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.app {
+  display: grid;
+  /* titlebar · stage · A/B rail · (spare) · transport.
+     Rows are assigned explicitly below so a hidden rail cannot shuffle the
+     transport into the wrong row. The fourth row is where the EQ drawer used
+     to be; the EQ is a separate window now (SPEC §12) and the row collapses to
+     nothing, but the explicit `grid-row` on every child means removing it is a
+     renumbering, which belongs to whoever owns this layout. */
+  grid-template-rows: var(--titlebar-h) minmax(0, 1fr) auto auto var(--transport-h);
+  height: 100%;
+  /* The floor the window itself enforces (src-tauri/tauri.conf.json
+     minWidth/minHeight). Everything between here and 420 px is designed in the
+     "Narrow windows" section at the end of this file; nothing is left to
+     accident, and nothing scrolls sideways. */
+  min-width: 420px;
+  min-height: 560px;
+  background: var(--bg-app);
+}
+
+/* ── title bar ─────────────────────────────────────────────────────────── */
+
+.titlebar {
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--titlebar-h);
+  padding-right: 8px;
+  /* A grid item only stops setting the grid's minimum width once its own
+     overflow is not `visible`. Nothing is meant to escape the title bar anyway,
+     and without this the one nowrap string in it (the blind-test line) held the
+     whole window 38 px wider than the 420 px floor. */
+  min-width: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg-titlebar);
+  z-index: 40;
+}
+
+.app[data-platform="mac"] .titlebar {
+  padding-left: var(--mac-inset);
+}
+.app:not([data-platform="mac"]) .titlebar {
+  padding-left: 14px;
+}
+
+.tb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 120px;
+}
+
+.wordmark {
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  font-weight: 600;
+  color: var(--text-hi);
+  padding-left: 1px;
+}
+
+.wordmark em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.tb-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  padding: 0 16px;
+  /* Not decoration: `min-width: 0` alone does not stop a flex item's *content*
+     from setting a minimum size, and `24-bit · 96 kHz · −9.6 LUFS` is nowrap.
+     Without this the title bar quietly held the whole window at ~845 px, which
+     is why the layout below 900 looked like it "did not fit" — it was being
+     pushed, not overflowing. */
+  overflow: hidden;
+}
+
+.tb-file {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-hi);
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.tb-badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+
+.tb-lufs {
+  font-size: 10.5px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.tb-idle {
+  font-size: 11px;
+  color: var(--text-lo);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* one line or nothing: `.tb-center` clips, so a wrap here put the first line
+     of "blind test · trial 1 / 8 · identity hidden" above the title bar */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tb-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 120px;
+  justify-content: flex-end;
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-control);
+  color: var(--text-mid);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.tb-btn:hover {
+  color: var(--text-hi);
+  background: var(--fill-hover);
+}
+.tb-btn[data-on="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.1);
+}
+.tb-btn svg {
+  display: block;
+}
+
+/* Window controls — Windows / Linux only, where the frame is undecorated.
+   Sized to the Windows caption metric (46 px) so the pointer lands where a
+   Windows user expects, and pushed to the very edge of the title bar. */
+.tb-winctl {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  margin-left: 10px;
+  margin-right: -8px;
+}
+
+.tb-win {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  color: var(--text-mid);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.tb-win:hover {
+  color: var(--text-hi);
+  background: var(--fill-hover-hi);
+}
+.tb-win.danger:hover {
+  color: var(--winctl-close-ink);
+  /* the Windows 11 close-button red, on both themes: a platform affordance */
+  background: var(--winctl-close);
+}
+.tb-win svg {
+  display: block;
+}
+
+/* ── stage ─────────────────────────────────────────────────────────────── */
+
+/* One column: waveform region over the playlist. The right-hand meter bridge
+   is gone, and its metering now lives inside the waveform region. */
+.stage {
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── waveform ──────────────────────────────────────────────────────────── */
+
+/* `--lane-h` is the drawn height of one lane's canvas: it depends on how many
+   lanes there are (`data-lanes`, from WaveformStack) and on how wide the window
+   is, which is why it lives here and not in the component. `--lane-cap` is the
+   *height* ladder's answer to the same question ("Short windows", at the end of
+   this file), and the drawn height is the smaller of the two — otherwise a rule
+   further down the file wins by cascade order rather than by being the tighter
+   constraint, and a 420 x 560 window would draw taller lanes than a 420 x 760
+   one. */
+.wave-stack {
+  --lane-h: 126px;
+  --lane-cap: 999px;
+  position: relative;
+  display: grid;
+  /* lanes take the width; the meter cluster is a fixed, narrow column that the
+     lanes' own height drives */
+  grid-template-columns: minmax(0, 1fr) var(--meters-w);
+  gap: 0 18px;
+  padding: 16px 20px 14px 20px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg-stage);
+}
+
+.wave-stack[data-lanes="2"] {
+  --lane-h: 86px;
+}
+
+.wave-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.wave-lane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 0 11px;
+  transition: opacity var(--t-panel) var(--ease);
+}
+
+.wave-stack[data-ab="true"] .wave-lane {
+  /* themed: the same ratio does not recede by the same amount on paper as it
+     does on obsidian, where a dimmed lane reads as further away rather than as
+     washed out (tokens.css, `--lane-idle-o`) */
+  opacity: var(--lane-idle-o);
+}
+.wave-stack[data-ab="true"] .wave-lane[data-active="true"] {
+  opacity: 1;
+}
+.wave-stack[data-ab="true"] .wave-lane + .wave-lane {
+  border-top: 1px solid var(--hairline);
+}
+
+.lane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 16px;
+}
+
+.deck-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-style: normal;
+  color: var(--ink-900);
+  background: var(--deck-a);
+}
+.deck-badge[data-deck="b"] {
+  background: var(--deck-b);
+}
+.deck-badge[data-ghost="true"] {
+  color: var(--text-lo);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.lane-name {
+  font-size: 11.5px;
+  color: var(--text-hi);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 52%;
+}
+
+.lane-artist {
+  font-size: 11px;
+  color: var(--text-lo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-spacer {
+  flex: 1;
+}
+
+.lane-meta {
+  font-size: 10px;
+  color: var(--text-mid);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.lane-meta em {
+  font-style: normal;
+  color: var(--text-faint);
+  padding-right: 5px;
+  letter-spacing: 0.14em;
+}
+
+.lane-trim {
+  color: var(--accent);
+}
+
+/* ── which deck you are hearing ───────────────────────────────────────────
+   `A` / `B` (and the A|B buttons, and a click on a lane) change *this* and
+   nothing else. That has to be unmistakable, because a user who reads it as
+   an assignment concludes that assignment is broken — which is exactly the
+   report this whole section came from. So the audible lane carries a solid
+   deck-coloured chip *and* an edge bar in that deck's colour, and the silent
+   one says "silent" rather than merely being dimmer. */
+.lane-audible {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--deck-a);
+  border-radius: var(--r-control);
+  padding: 2px 5px 2px 6px;
+}
+.wave-lane[data-deck="b"] .lane-audible {
+  color: var(--deck-b-ink);
+  background: var(--deck-b);
+}
+.lane-silent {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-radius: var(--r-control);
+  padding: 2px 5px 2px 6px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* the edge bar: visible from the corner of the eye, which a 9 px chip is not */
+.wave-stack[data-ab="true"] .wave-lane::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background var(--t-hover) var(--ease);
+}
+.wave-stack[data-ab="true"] .wave-lane[data-active="true"]::before {
+  background: var(--deck-a);
+}
+.wave-stack[data-ab="true"] .wave-lane[data-deck="b"][data-active="true"]::before {
+  background: var(--deck-b);
+}
+
+.lane-canvas {
+  position: relative;
+  width: 100%;
+  height: min(var(--lane-h), var(--lane-cap));
+  /* a click/drag seek surface, not selectable text */
+  cursor: crosshair;
+  touch-action: none;
+}
+.lane-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── a lane as a drop target (SPEC §2.8) ──────────────────────────────────
+   Dragging a playlist row — or a file off the desktop — onto a lane assigns
+   it to that deck. The lane has to say so *before* the drop, in that deck's
+   own colour, or the gesture is a guess. */
+.wave-lane[data-drop-target="true"] {
+  opacity: 1;
+}
+.wave-lane[data-drop-target="true"] .lane-canvas {
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--accent-rgb) / 0.85),
+    0 0 0 3px rgb(var(--accent-rgb) / 0.12);
+  background: rgb(var(--accent-rgb) / 0.07);
+}
+.wave-lane[data-drop-target="true"][data-deck="b"] .lane-canvas {
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--deck-b-rgb) / 0.9),
+    0 0 0 3px rgb(var(--deck-b-rgb) / 0.14);
+  background: rgb(var(--deck-b-rgb) / 0.09);
+}
+.wave-lane[data-drop-target="true"] .lane-drop-hint {
+  opacity: 1;
+}
+/* one message at a time: the drop hint replaces the empty-lane copy */
+.wave-lane[data-drop-target="true"] .lane-empty {
+  opacity: 0;
+}
+.lane-drop-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  transition: opacity var(--t-hover) var(--ease);
+}
+.wave-lane[data-deck="b"] .lane-drop-hint {
+  color: var(--deck-b);
+}
+
+/* ── an empty lane explains itself ────────────────────────────────────────
+   With A/B on and nothing on this deck, the lane used to be a blank box: the
+   picture of a feature that is broken. It now names the three routes that
+   fill it. */
+.lane-empty {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+  text-align: center;
+}
+.lane-empty strong {
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+.lane-empty span {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.lane-empty em {
+  font-style: normal;
+  color: var(--text-lo);
+}
+.wave-lane[data-deck="b"] .lane-empty strong {
+  color: rgb(var(--deck-b-rgb) / 0.75);
+}
+
+.wave-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  color: var(--text-faint);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ── playlist ──────────────────────────────────────────────────────────── */
+
+.playlist {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 20px 9px;
+}
+
+.pl-count {
+  font-size: 10px;
+  color: var(--text-lo);
+  letter-spacing: 0.06em;
+}
+
+.pl-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.ghost-btn {
+  height: 21px;
+  padding: 0 9px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease),
+    background var(--t-hover) var(--ease);
+}
+.ghost-btn:hover {
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: var(--fill-ghost);
+}
+
+/* Five columns: index, title, artist, deck, time. The LUFS and FORMAT columns
+   are gone — the loudness number a mix engineer needs while listening is the
+   live one in the meter cluster and on the lane head, and the format is in the
+   title bar for the audible track — so the two text columns take the width they
+   used to leave to them instead of the table ending in a gutter. */
+.pl-grid {
+  display: grid;
+  grid-template-columns: 34px minmax(200px, 1fr) minmax(130px, 0.52fr) 46px 62px;
+  align-items: center;
+  gap: 14px;
+}
+
+.pl-cols {
+  padding: 0 20px 7px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-faint);
+}
+/* The header reads as a header, whatever the cell classes say about the body.
+   Two class selectors, because `.pl-dur` and `.pl-cols > *` are the same
+   specificity and the body rule sits further down the file: TIME was printing
+   itself in the body's 11 px and the body's colour, one size and one shade
+   louder than TITLE and DECK beside it. */
+.pl-cols.pl-grid > * {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+}
+
+.pl-rows {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: 3px 0 12px;
+}
+
+.pl-row {
+  position: relative;
+  height: 30px;
+  padding: 0 20px;
+  font-size: 12px;
+  color: var(--text-mid);
+  cursor: default;
+  transition: background var(--t-hover) var(--ease), color var(--t-hover) var(--ease);
+}
+
+.pl-row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background var(--t-hover) var(--ease);
+}
+
+.pl-row:hover {
+  background: var(--fill-row);
+  color: var(--text-hi);
+}
+.pl-row[data-selected="true"] {
+  background: var(--fill-sunken);
+}
+/* `data-playing` is the audible row; `data-loaded` is the other deck while A/B
+   is on — marked, but visibly quieter, and in deck B's steel accent so the two
+   are never mistaken for each other. With A/B off only one row can be either. */
+.pl-row[data-playing="true"] {
+  color: var(--text-hi);
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.09), rgb(var(--accent-rgb) / 0));
+}
+.pl-row[data-playing="true"]::after {
+  background: var(--deck-a);
+}
+.pl-row[data-playing="true"][data-deck="b"] {
+  background: linear-gradient(90deg, rgb(var(--deck-b-rgb) / 0.1), rgb(var(--deck-b-rgb) / 0));
+}
+.pl-row[data-playing="true"][data-deck="b"]::after {
+  background: var(--deck-b);
+}
+.pl-row[data-loaded="true"] {
+  color: var(--text-mid);
+}
+.pl-row[data-loaded="true"]::after {
+  width: 1px;
+  background: rgb(var(--accent-rgb) / 0.4);
+}
+.pl-row[data-loaded="true"][data-deck="b"]::after {
+  background: rgb(var(--deck-b-rgb) / 0.45);
+}
+.pl-row[data-pending="true"] {
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.14), rgb(var(--accent-rgb) / 0.01));
+}
+.pl-row[data-dragging="true"] {
+  opacity: 0.35;
+}
+.pl-row[data-drop="above"] {
+  box-shadow: inset 0 1px 0 var(--accent);
+}
+.pl-row[data-drop="below"] {
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.pl-row[data-missing="true"] .pl-title {
+  color: var(--m-hot);
+  text-decoration: line-through;
+}
+
+.pl-i {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-align: right;
+}
+.pl-row[data-playing="true"] .pl-i {
+  color: var(--accent);
+}
+.pl-row[data-playing="true"][data-deck="b"] .pl-i {
+  color: var(--deck-b);
+}
+.pl-row[data-loaded="true"] .pl-i {
+  color: var(--text-lo);
+}
+
+.pl-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pl-sub {
+  font-size: 10px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pl-artist {
+  font-size: 11px;
+  color: var(--text-lo);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pl-dur {
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-mid);
+}
+
+.pl-deck {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── the A / B chips on a playlist row (SPEC §2.8) ─────────────────────────
+   The deck column is a control, not a label. The chip for the deck a row is
+   on is always lit; the other one fades in on hover, on the selected row and
+   on keyboard focus. It is deliberately *not* hover-only — that is how the
+   right-click menu ended up being the only route to deck B, which is to say
+   no route at all for anyone who did not already know about it. Hidden chips
+   keep their box (`opacity`, not `display`), so they stay tabbable and never
+   reflow the column when they appear. */
+.pl-chips {
+  display: flex;
+  gap: 2px;
+}
+
+.deck-chip {
+  width: 20px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--r-control);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-lo);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--t-hover) var(--ease), background var(--t-hover) var(--ease),
+    color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease);
+}
+.pl-row:hover .deck-chip,
+.pl-row[data-selected="true"] .deck-chip,
+.pl-row:focus-within .deck-chip {
+  opacity: 1;
+}
+.deck-chip:hover {
+  color: var(--text-hi);
+  background: var(--fill-hover);
+}
+/* the deck this row is actually on: always visible, always in that deck's
+   accent, so the column still reads at a glance as "what is loaded where" */
+.deck-chip[data-on="true"] {
+  opacity: 1;
+  color: var(--accent-ink);
+  background: var(--deck-a);
+  box-shadow: none;
+}
+.deck-chip[data-on="true"][data-deck="b"] {
+  color: var(--deck-b-ink);
+  background: var(--deck-b);
+}
+
+.pl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  min-height: 180px;
+  color: var(--text-faint);
+}
+.pl-empty strong {
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+.pl-empty span {
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.pl-empty .ghost-btn {
+  margin-top: 6px;
+}
+
+/* ── context menu ──────────────────────────────────────────────────────── */
+
+.ctx-menu {
+  position: fixed;
+  min-width: 208px;
+  padding: 5px;
+  border-radius: 8px;
+  background: var(--surface-menu);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  backdrop-filter: blur(18px);
+  z-index: 90;
+  animation: fade-in 140ms var(--ease);
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-mid);
+  text-align: left;
+}
+.ctx-item:hover {
+  background: var(--fill-menu);
+  color: var(--text-hi);
+}
+.ctx-item[data-danger="true"]:hover {
+  color: var(--m-hot);
+}
+.ctx-item small {
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.ctx-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--hairline);
+}
+
+/* ── waveform meter cluster (right of the lanes) ───────────────────────── */
+
+/* The condensed replacement for the old right-hand bridge. Two columns: the
+   numbers a mix engineer reads at a glance, and the L/R level meter, which is
+   the only thing here allowed to stretch. */
+.wave-meters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 0 11px 16px;
+  border-left: 1px solid var(--hairline);
+}
+
+.wm-stack {
+  display: flex;
+  flex-direction: column;
+  /* The rows are spread over the waveform region's height rather than stacked
+     at the top with a dead band underneath: the same five read-outs, breathing,
+     with the foot line sitting on the level meter's baseline. `gap` is the
+     floor for short regions, where space-between has nothing left to give. */
+  justify-content: space-between;
+  gap: 9px;
+  min-width: 0;
+}
+
+.wm-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.wm-int {
+  font-size: 21px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.wm-int-u {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.wm-int-u em {
+  font-style: normal;
+  color: var(--text-lo);
+  padding-left: 4px;
+}
+
+.wm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 10px;
+}
+
+.wm-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wm-k {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  /* faint enough to be furniture, solid enough to read at 8.5px on obsidian */
+  color: var(--text-lo);
+}
+
+.wm-v {
+  font-size: 11px;
+  color: var(--text-hi);
+}
+.wm-v[data-tone="hot"] {
+  color: var(--m-hot);
+}
+.wm-v[data-tone="clip"] {
+  color: var(--m-clip);
+}
+
+/* correlation: label · 10px track · value, on one line */
+.wm-corr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.wm-corr-track {
+  position: relative;
+  flex: 1;
+  min-width: 26px;
+  height: 10px;
+}
+.wm-corr-track canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.wm-note {
+  margin: 0;
+  font-size: 8.5px;
+  line-height: 1.45;
+  letter-spacing: 0.03em;
+  color: var(--text-lo);
+}
+
+/* two short lines rather than one long one: `96.0 kHz · bit-transparent` does
+   not fit the column at the minimum window, and this is the one place in the
+   cluster where a second line costs nothing */
+.wm-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.wm-foot .wm-trans[data-ok="true"] {
+  color: var(--m-safe);
+}
+
+/* the loudness strip: momentary fill, short-term tick, integrated diamond */
+.wm-lu {
+  position: relative;
+  height: 18px;
+}
+.wm-lu canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* the level meter fills whatever height the lanes give the region */
+.wm-level {
+  position: relative;
+  min-height: 0;
+}
+.wm-level canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* the true-peak cell is also the clip light and the meter reset */
+/* the read-out is also a button, so it gets a button's target: the negative
+   margin keeps the number exactly where the grid put it */
+.wm-tp {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  text-align: left;
+  border-radius: var(--r-control);
+  transition: box-shadow var(--t-hover) var(--ease);
+  cursor: pointer;
+}
+.wm-tp:hover {
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.wm-tp[data-on="true"] .wm-k {
+  color: var(--m-clip);
+}
+
+/* ── transport ─────────────────────────────────────────────────────────── */
+
+.transport {
+  grid-row: 5;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: var(--transport-h);
+  padding: 0 20px;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg-transport);
+  z-index: 30;
+}
+
+.tr-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--text-mid);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.tr-btn:hover {
+  color: var(--text-hi);
+  background: var(--fill-hover);
+}
+.tr-btn.primary {
+  width: 38px;
+  height: 38px;
+  color: var(--ink-900);
+  background: linear-gradient(180deg, var(--accent), var(--accent-press));
+  box-shadow: 0 6px 18px rgb(var(--accent-deep-rgb) / 0.16);
+}
+.tr-btn.primary:hover {
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+}
+
+.tr-time {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-left: 8px;
+  /* Not cosmetic, and not deletable: below 600 px the transport is a grid whose
+     middle column is `minmax(0, 1fr)` (see "≤599: the transport splits") and
+     whose rows are `auto`, so an elapsed/total read-out that could break across
+     lines would grow the row and shove the playlist up — at the 420 px floor, on
+     any file long enough to print hours.
+
+     `shots-theme.mjs` holds the 420 px floor to it in both themes: one line, no
+     overflow, clear of the loop button, and a transport that does not change
+     height for an hour-long read-out. It also asserts this property itself,
+     because an hour still *fits* at 420 px with room to spare — the layout
+     measurements alone would keep passing for a while after this line went. */
+  white-space: nowrap;
+}
+.tr-pos {
+  font-size: 16px;
+  color: var(--text-hi);
+  letter-spacing: 0.01em;
+}
+.tr-sep {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.tr-dur {
+  font-size: 11px;
+  color: var(--text-lo);
+}
+
+.tr-spacer {
+  flex: 1;
+}
+
+.tr-toggle {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: all var(--t-hover) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tr-toggle:hover {
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+.tr-toggle[data-on="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.35);
+}
+.tr-toggle[data-on="true"][data-tone="b"] {
+  color: var(--deck-b);
+  background: rgb(var(--deck-b-rgb) / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(var(--deck-b-rgb) / 0.38);
+}
+.tr-toggle .val {
+  color: inherit;
+  opacity: 0.75;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.tr-toggle:disabled {
+  opacity: 0.35;
+}
+
+/* volume */
+.vol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 190px;
+}
+/* 22 px, not the icon's 14: it is a real target, and the only one in the
+   transport that is not already a 30 px circle */
+.vol-btn {
+  color: var(--text-lo);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  transition: color var(--t-hover) var(--ease);
+}
+.vol-btn:hover {
+  color: var(--text-hi);
+}
+.vol-btn[data-muted="true"] {
+  color: var(--m-hot);
+}
+.vol-track {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  cursor: default;
+  touch-action: none;
+}
+.vol-track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--fill-track);
+}
+.vol-fill {
+  position: absolute;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.45), var(--accent));
+}
+.vol-knob {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.12);
+  transition: box-shadow var(--t-hover) var(--ease);
+}
+.vol-track:hover .vol-knob {
+  box-shadow: 0 0 0 5px rgb(var(--accent-rgb) / 0.16);
+}
+.vol-db {
+  width: 52px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--text-mid);
+}
+
+/* A/B cluster */
+.ab-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--hairline);
+  height: 34px;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 3px;
+  background: var(--fill-sunken);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.seg button {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--r-control);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-lo);
+  transition: all var(--t-hover) var(--ease);
+}
+.seg button:hover {
+  color: var(--text-hi);
+}
+.seg button[data-on="true"] {
+  color: var(--ink-900);
+  background: var(--deck-a);
+}
+.seg button[data-on="true"][data-deck="b"] {
+  background: var(--deck-b);
+}
+.seg button:disabled {
+  opacity: 0.4;
+}
+
+.xfade {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.xfade .label {
+  font-size: 9px;
+}
+.xfade-opts {
+  display: inline-flex;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  overflow: hidden;
+}
+.xfade-opts button {
+  height: 22px;
+  padding: 0 7px;
+  font-size: 10px;
+  color: var(--text-lo);
+  transition: all var(--t-hover) var(--ease);
+}
+.xfade-opts button + button {
+  border-left: 1px solid var(--hairline);
+}
+.xfade-opts button:hover {
+  color: var(--text-hi);
+  background: var(--fill-input);
+}
+.xfade-opts button[data-on="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.1);
+}
+
+/* `.eq-hint` is the app's small print, not the EQ's: the settings panel and
+   the blind-test panel both use it. Everything else the EQ used to style from
+   this sheet moved to `src/styles/eq.css` with the panel itself, which now
+   lives in a window of its own (SPEC §12) and does not load this file. */
+
+.eq-hint {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+/* ── floating panels (settings / blind) ────────────────────────────────── */
+
+.float-panel {
+  position: fixed;
+  z-index: 70;
+  width: 320px;
+  padding: 16px 18px 18px;
+  border-radius: var(--r-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  backdrop-filter: blur(24px) saturate(1.1);
+  animation: panel-in var(--t-panel) var(--ease);
+}
+.float-panel.right {
+  top: calc(var(--titlebar-h) + 10px);
+  right: 12px;
+}
+.float-panel.blind {
+  width: 380px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes panel-in-center {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+.float-panel.blind {
+  animation: panel-in-center var(--t-panel) var(--ease);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.panel-head .spacer {
+  flex: 1;
+}
+.panel-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+.close-btn {
+  color: var(--text-faint);
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--r-control);
+  transition: color var(--t-hover) var(--ease);
+}
+.close-btn:hover {
+  color: var(--text-hi);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+.field + .field {
+  border-top: 1px solid var(--hairline);
+}
+.field .k {
+  font-size: 11px;
+  color: var(--text-mid);
+}
+.field .sub {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.field .v {
+  font-size: 11px;
+  color: var(--text-hi);
+}
+
+.select {
+  appearance: none;
+  height: 26px;
+  min-width: 170px;
+  max-width: 100%;
+  padding: 0 26px 0 9px;
+  border-radius: var(--r-control);
+  /* the chevron is a data URI, which cannot read a variable, so the whole
+     image is the token (`--select-arrow`) */
+  background: var(--fill-input) var(--select-arrow)
+    no-repeat right 8px center;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-hi);
+  font-size: 11px;
+}
+/* A select keeps focus after a click on purpose — the arrow keys then walk the
+   options — so this one highlights on plain `:focus`. The keyboard ring from
+   `tokens.css` still lands on top of it, which is why the blanket
+   `outline: none` that used to live here is gone. */
+.select:focus {
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.4);
+}
+.select option {
+  background: var(--ink-700);
+}
+
+.switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 10px;
+  background: var(--fill-hover-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: background var(--t-panel) var(--ease);
+  flex: none;
+}
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-lo);
+  transition: transform var(--t-panel) var(--ease), background var(--t-panel) var(--ease);
+}
+.switch[data-on="true"] {
+  background: rgb(var(--accent-rgb) / 0.22);
+}
+.switch[data-on="true"] i {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+
+/* ── blind test ────────────────────────────────────────────────────────── */
+
+.blind-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.blind-slot {
+  height: 76px;
+  border-radius: 8px;
+  background: var(--fill-quiet);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all var(--t-panel) var(--ease);
+}
+.blind-slot .s {
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  color: var(--text-lo);
+}
+.blind-slot .h {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.blind-slot[data-on="true"] {
+  background: rgb(var(--accent-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.4);
+}
+.blind-slot[data-on="true"] .s {
+  color: var(--accent);
+}
+
+.blind-progress {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--fill-menu);
+  overflow: hidden;
+  margin: 12px 0;
+}
+.blind-progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.4), var(--accent));
+  transition: width var(--t-slow) var(--ease);
+}
+
+/* Two buttons on the setup and trial rows, three on the summary ("Close /
+   New test / Run again"). A fixed two-column grid wrapped the third one onto a
+   half-width second row, which read as a mistake; one flexible row keeps them
+   even whatever the count. */
+.blind-actions {
+  display: flex;
+  gap: 8px;
+}
+.blind-actions > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.solid-btn {
+  height: 30px;
+  border-radius: var(--r-control);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-900);
+  background: linear-gradient(180deg, var(--accent), var(--accent-press));
+  transition: filter var(--t-hover) var(--ease);
+}
+.solid-btn:hover {
+  filter: brightness(1.08);
+}
+.solid-btn.quiet {
+  color: var(--text-mid);
+  background: var(--fill-hover);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.solid-btn.quiet:hover {
+  color: var(--text-hi);
+}
+
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.result-table th {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: left;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--hairline);
+}
+.result-table td {
+  padding: 4px 6px;
+  color: var(--text-mid);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.result-table td[data-ok="true"] {
+  color: var(--m-safe);
+}
+.result-table td[data-ok="false"] {
+  color: var(--m-hot);
+}
+.blind-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+.blind-score .v {
+  font-size: 30px;
+  color: var(--accent);
+  line-height: 1;
+}
+.blind-score .k {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ── toasts ────────────────────────────────────────────────────────────── */
+
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--transport-h) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 95;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  max-width: 380px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: var(--surface-toast);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  backdrop-filter: blur(16px);
+  font-size: 11.5px;
+  color: var(--text-hi);
+  pointer-events: auto;
+  animation: toast-in 260ms var(--ease);
+}
+.toast i {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
+}
+.toast[data-kind="warn"] i {
+  background: var(--m-hot);
+}
+.toast[data-kind="error"] i {
+  background: var(--m-clip);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── shortcut overlay / drop overlay ───────────────────────────────────── */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 200ms var(--ease);
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Wide enough that the two columns do not wrap, and short enough that all 28
+   rows fit inside the smallest window Onyx can be resized to (980 x 640,
+   tauri.conf.json minWidth/minHeight). At 620 px and 78vh the card scrolled:
+   the last four rows — including "? — this overlay" and "Esc — close it" —
+   were below the fold of a reference card, in a window that gives no hint it
+   scrolls. Measured: 534 px of content, 534 px of box, at 1180x760, 980x640
+   and 1400x900. */
+.shortcut-card {
+  width: 880px;
+  max-width: calc(100vw - 72px);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 26px 30px 28px;
+  border-radius: var(--r-panel);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+}
+.shortcut-card h2 {
+  margin: 0 0 18px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 34px;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.shortcut-row .keys {
+  min-width: 108px;
+  font-size: 10.5px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}
+.shortcut-row .act {
+  font-size: 11.5px;
+  color: var(--text-mid);
+}
+.shortcut-foot {
+  margin-top: 18px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--scrim-drop);
+  backdrop-filter: blur(6px);
+  animation: fade-in 160ms var(--ease);
+  pointer-events: none;
+}
+.drop-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 46px 74px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.4);
+  background: radial-gradient(500px 260px at 50% 40%, rgb(var(--accent-rgb) / 0.08), transparent 70%);
+}
+.drop-frame strong {
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.drop-frame span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-lo);
+}
+
+/* ── misc ──────────────────────────────────────────────────────────────── */
+
+/* the error-boundary fallback: the only screen that replaces the whole app */
+.fatal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  text-align: center;
+  background: var(--ink-900);
+}
+.fatal strong {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--text-hi);
+}
+.fatal span {
+  max-width: 460px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-mid);
+}
+.fatal .num {
+  color: var(--m-hot);
+  user-select: text;
+}
+.fatal .solid-btn {
+  margin-top: 8px;
+}
+
+.connecting {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.shimmer {
+  animation: shimmer 2.6s var(--ease) infinite;
+}
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* icon swap driven by data attributes (no React re-render) */
+.tr-btn .i-play,
+.tr-btn .i-pause {
+  display: inline-flex;
+}
+.tr-btn .i-pause {
+  display: none;
+}
+.tr-btn[data-playing="true"] .i-play {
+  display: none;
+}
+.tr-btn[data-playing="true"] .i-pause {
+  display: inline-flex;
+}
+.vol-btn {
+  position: relative;
+}
+.vol-btn[data-muted="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(-22deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPEC surfaces
+   Same vocabulary as v1: hairline boxes, uppercase micro-labels, tabular
+   numerals, one champagne accent. Nothing new gets a border or a gradient
+   unless it is a state the user must not miss.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── monitor matrix (§6) ───────────────────────────────────────────────── */
+
+.monitor {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.monitor > .label {
+  font-size: 9px;
+}
+
+.mon-opts {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.mon-opts button {
+  min-width: 26px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-family: var(--font-num);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-lo);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.mon-opts button:hover {
+  color: var(--text-hi);
+}
+.mon-opts button[data-on="true"] {
+  color: var(--ink-900);
+  background: var(--accent);
+}
+.mon-opts button[data-on="true"][data-alarm="true"] {
+  background: var(--m-hot);
+  color: var(--ink-900);
+}
+/* stereo is the resting state — never light it up like a warning */
+.mon-opts[data-mode="stereo"] button[data-on="true"] {
+  color: var(--text-hi);
+  background: var(--fill-track);
+}
+
+/* ── persistent state badges (§6 / §11 / §12) ──────────────────────────── */
+
+/* Top-centre, clear of every control. It used to float above the transport,
+   where it covered the A/B nudge buttons and ate their clicks. */
+.badge-rail {
+  position: fixed;
+  /* Stretched rather than `left: 50% + translateX(-50%)`: that older form gave
+     the rail only the right half of the window to live in, so two badges wide
+     enough to matter wrapped their own text and spilled over lane A's header.
+     Badges now stack downward over the waveform, which is empty space, and no
+     badge ever collides with the AUDIBLE pill or the lane read-outs. */
+  left: 0;
+  /* Centred over the waveform *lanes*, not the window: the meter cluster on the
+     right of the region, plus the stack's own padding, is dead ground for a
+     badge — centred on the window a wide one sat on the LUFS read-out. */
+  right: calc(var(--meters-w) + 20px);
+  /* 48px clears the titlebar *and* lane A's header row (deck letter, title,
+     AUDIBLE pill, LUFS): a 400px badge centred any higher clipped the corner
+     of the AUDIBLE pill. Sitting over the top of the waveform, which carries
+     no text, the stack can grow to three without hitting anything. */
+  top: calc(var(--titlebar-h) + 48px);
+  /* below `.float-panel` (70): the badges are ambient state, and stacked above
+     it they printed the offset read-out straight through the ABX panel head */
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  pointer-events: none;
+}
+
+.state-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  max-width: 100%;
+  padding: 0 11px 0 9px;
+  border-radius: 12px;
+  white-space: nowrap;
+  background: var(--surface-badge);
+  backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px rgb(var(--accent-rgb) / 0.34);
+  pointer-events: auto;
+  animation: badge-in 220ms var(--ease);
+  cursor: pointer;
+}
+.state-badge[data-on="true"] {
+  display: inline-flex;
+}
+.state-badge[data-tone="alarm"] {
+  box-shadow: var(--shadow-float), inset 0 0 0 1px rgb(var(--m-hot-rgb) / 0.5);
+}
+.state-badge[data-tone="steel"] {
+  box-shadow: var(--shadow-float), inset 0 0 0 1px rgb(var(--deck-b-rgb) / 0.42);
+}
+
+.sb-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+  animation: badge-pulse 2.4s var(--ease) infinite;
+}
+[data-tone="alarm"] .sb-dot {
+  background: var(--m-hot);
+  box-shadow: 0 0 8px rgb(var(--m-hot-rgb) / 0.65);
+}
+[data-tone="steel"] .sb-dot {
+  background: var(--deck-b);
+  box-shadow: 0 0 8px rgb(var(--deck-b-rgb) / 0.55);
+}
+
+.sb-k {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sb-v {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+[data-tone="alarm"] .sb-v {
+  color: var(--m-hot);
+}
+[data-tone="steel"] .sb-v {
+  color: var(--deck-b);
+}
+.sb-m {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-lo);
+  border-left: 1px solid var(--hairline);
+  margin-left: 2px;
+  padding-left: 8px;
+}
+
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ── A/B rail: level match (§10) + alignment (§11) ─────────────────────── */
+
+.ab-rail {
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 42px;
+  padding: 0 20px;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg-rail);
+}
+.ab-rail .spacer {
+  flex: 1;
+}
+.ab-rail-title {
+  font-size: 9px;
+  color: var(--text-faint);
+}
+
+.rail-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline);
+  flex: none;
+}
+
+.tr-toggle.match {
+  height: 22px;
+  min-width: 128px;
+  justify-content: center;
+}
+.tr-toggle.match[data-pending="true"] {
+  color: var(--text-mid);
+  background: rgb(var(--accent-rgb) / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.2);
+}
+
+.align-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.align-group > .label {
+  font-size: 9px;
+}
+
+.nudges {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.nudges button {
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  color: var(--text-lo);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.nudges button:hover:not(:disabled) {
+  color: var(--text-hi);
+  background: var(--fill-hover);
+}
+.nudges button:disabled {
+  opacity: 0.3;
+}
+
+.nudge-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  padding: 0 10px;
+  margin: 0 3px;
+  border-radius: 3px;
+  background: var(--well-deep);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.off-ms {
+  font-size: 11px;
+  line-height: 1.15;
+  color: var(--text-lo);
+}
+.off-smp {
+  font-size: 8.5px;
+  line-height: 1.15;
+  color: var(--text-faint);
+}
+.align-group[data-offset="true"] .off-ms {
+  color: var(--deck-b);
+}
+.align-group[data-offset="true"] .off-smp {
+  color: rgb(var(--deck-b-rgb) / 0.6);
+}
+.align-group[data-offset="true"] .nudge-mid {
+  box-shadow: inset 0 0 0 1px rgb(var(--deck-b-rgb) / 0.35);
+}
+
+.invert-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.invert-group > .label {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tr-toggle.sm {
+  height: 20px;
+  min-width: 24px;
+  padding: 0 7px;
+  justify-content: center;
+}
+
+.align-note {
+  font-size: 10px;
+  color: var(--text-mid);
+  letter-spacing: 0.02em;
+  max-width: 340px;
+}
+.align-note.warn {
+  color: var(--m-hot);
+}
+
+.align-hint {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* lane extras */
+.lane-hidden {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.lane-invert {
+  color: var(--m-hot);
+  letter-spacing: 0.08em;
+}
+
+.tr-trim {
+  font-size: 9.5px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+/* ── blind test: protocol picker + verdict (§7) ────────────────────────── */
+
+.proto-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 2px 0 12px;
+}
+.proto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: var(--fill-ghost);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: all var(--t-hover) var(--ease);
+}
+.proto .s {
+  font-size: 11.5px;
+  color: var(--text-mid);
+  letter-spacing: 0.02em;
+}
+.proto .h {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.proto:hover {
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+.proto[data-on="true"] {
+  background: rgb(var(--accent-rgb) / 0.09);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.38);
+}
+.proto[data-on="true"] .s {
+  color: var(--accent);
+}
+
+.blind-question {
+  font-size: 12.5px;
+  color: var(--text-hi);
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.blind-verdict {
+  padding: 11px 13px;
+  margin: 2px 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-mid);
+  background: var(--fill-ghost);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.blind-verdict[data-significant="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.07);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.3);
+}
+
+/* ── loudness cache (§8) ───────────────────────────────────────────────── */
+
+.cache-path .v.path {
+  font-size: 9.5px;
+  color: var(--text-lo);
+  /* Matches `PATH_CHARS` in SettingsPanel, which elides the head of the path so
+     the file name survives. `ch` on a monospace face means the box and the
+     character budget are the same number. */
+  max-width: 36ch;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cache-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+.cache-actions .eq-hint {
+  flex: 1;
+}
+
+.confirm-pair {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.ghost-btn.danger {
+  color: var(--m-hot);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.35);
+}
+.ghost-btn.danger:hover {
+  color: var(--m-clip-hi);
+  background: rgb(var(--m-clip-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.55);
+}
+.ghost-btn:disabled {
+  opacity: 0.4;
+}
+
+/* Blind-test masking: while a test runs the meters keep their shape but show
+   none of their content. A meter that reads −14.2 on one slot and −11.6 on the
+   other answers the question for you. */
+.masked-panel {
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--masked-stripe) 0 6px,
+    transparent 6px 12px
+  );
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Narrow windows
+
+   The window ships at 1180 × 760 and goes all the way down to 420 × 560
+   (src-tauri/tauri.conf.json). 420 is a designed width, not a survival mode:
+   it is the player you keep in the corner of the screen while you work in the
+   DAW next to it. So what it keeps is what a hand reaches for — play/pause,
+   the position, the waveform, the track list and the A|B switch — and what it
+   loses is furniture, read-outs that are printed somewhere else as well, and
+   controls that also have a key.
+
+   Six deliberate steps, not a continuous squeeze. Each one has a job, and the
+   playlist columns drop in one order — LUFS and format first (they were deleted
+   outright), then the artist, then the index — because a row is identified by
+   its title, and by the file name printed under it once the artist is gone.
+
+     ≤1279  furniture: hint sentences, the labels an icon already says, gaps.
+     ≤1099  the meter column narrows to 198 px; paddings come in to 14; the
+            title bar's trim read-out goes (it is spelled out on the A/B rail).
+     ≤ 959  the meter cluster stops being a column beside the lanes and becomes
+            a strip *under* them; the L/R meter lies down (LevelMeter picks its
+            orientation from its own box, so this is one CSS change), the
+            crossfade picker goes, and the two bottom rows are allowed to wrap.
+     ≤ 679  one-of-a-kind controls only: the monitor matrix ([ ] \) goes, the
+            1 ms / 1 sample nudges go (, / . with Alt), the volume read-out
+            goes, the playlist tightens, and the A/B rail becomes two composed
+            lines instead of three wrapped ones.
+     ≤ 599  the transport splits into an explicit two-row grid: what you press
+            while listening on the first row, what you set up on the second.
+     ≤ 479  the compact player: three playlist columns with two-line rows, the
+            artist and index columns gone, icon-only Loop and Blind, panels
+            sized to the window.
+
+   Rules for the whole ladder: no font goes below the 8.5 px this design
+   already uses for unit labels, no hit target ends up under 20 px, nothing
+   scrolls sideways, and the blind-test masking (SPEC §7) is never touched —
+   the strip is the same masked DOM, just laid out differently. Height has its
+   own ladder ("Short windows", below), and the two never fight: where they
+   both have an opinion about the lane height it is expressed as `--lane-h` vs
+   `--lane-cap` and the smaller wins.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1279px) {
+  .transport {
+    gap: 13px;
+    padding: 0 14px;
+  }
+  .ab-rail {
+    gap: 10px;
+    padding: 0 14px;
+  }
+  .vol {
+    width: 148px;
+  }
+  /* the same sentence is in the shortcut overlay under `?` */
+  .align-hint {
+    display: none;
+  }
+  .align-note {
+    max-width: 240px;
+  }
+}
+
+@media (max-width: 1099px) {
+  /* the meter column gives width back to the lanes and the playlist; every
+     number in it keeps its size */
+  :root {
+    --meters-w: 198px;
+  }
+  .transport {
+    gap: 10px;
+  }
+  .tr-time {
+    margin-left: 2px;
+  }
+  /* the segmented control reads as a monitor matrix without being told */
+  .monitor > .label,
+  .xfade > .label {
+    display: none;
+  }
+  .mon-opts button {
+    min-width: 22px;
+    padding: 0 4px;
+  }
+  .vol {
+    width: 104px;
+  }
+  .ab-cluster {
+    gap: 6px;
+    padding-left: 10px;
+  }
+  .nudges button {
+    padding: 0 5px;
+  }
+  .nudge-mid {
+    min-width: 92px;
+    padding: 0 6px;
+  }
+  .tr-toggle.match {
+    min-width: 108px;
+  }
+  /* the trim is spelled out on the A/B rail ("MATCHED · −1.8 dB on B") and the
+     badge rail says level match is on: three copies is two too many */
+  .tr-trim {
+    display: none;
+  }
+  /* the badge and the LUFS number beside it are the first to go below, so the
+     name can have the room they were reserving */
+  .tb-file {
+    max-width: 60%;
+  }
+  .pl-grid {
+    grid-template-columns: 28px minmax(140px, 1fr) minmax(110px, 0.5fr) 42px 58px;
+    gap: 12px;
+  }
+  .pl-head,
+  .pl-cols,
+  .pl-row {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .wave-stack {
+    padding-left: 14px;
+    padding-right: 14px;
+    gap: 0 12px;
+  }
+  /* give the width back to the lanes; the numbers keep their size */
+  .wave-meters {
+    padding-left: 12px;
+  }
+}
+
+/* ── ≤959: the meter cluster moves under the lanes ─────────────────────────
+   A 198 px column beside a lane stops being a good trade once the lane itself
+   is under ~600 px: the waveform is the instrument here, and it wants the
+   window's width. The same DOM becomes a strip — big integrated number, the
+   four read-outs in one row, the loudness scale and correlation on the next,
+   and the L/R meter full width underneath, where the whole −60…0 dB scale is
+   spread over 600 px instead of 40. Nothing is dropped at this step. */
+@media (max-width: 959px) {
+  /* Below this width the transport and the A/B rail are allowed to take a
+     second line if their contents ever need one. They are laid out so they do
+     not — the harness asserts it at 900, 640, 480 and 420 — but a row that
+     wraps is recoverable and a row that clips is not. */
+  .app {
+    grid-template-rows: var(--titlebar-h) minmax(0, 1fr) auto auto auto;
+  }
+  .transport,
+  .ab-rail {
+    flex-wrap: wrap;
+    align-content: center;
+    height: auto;
+    min-height: var(--transport-h);
+    row-gap: 6px;
+  }
+  .ab-rail {
+    min-height: 42px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  /* the integrated LUFS is in the meter strip and on the lane head; the format
+     badge stays, it is the one place the audible file's format is written */
+  .tb-lufs,
+  /* the separator that belonged to it — the badge keeps the one in front of it */
+  .tb-badge + .dot {
+    display: none;
+  }
+  /* a crossfade is chosen once for a session, not ridden; and it is the widest
+     thing in the transport that nothing else can be traded for */
+  .xfade {
+    display: none;
+  }
+  .wave-stack {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px 0;
+    --lane-h: 112px;
+  }
+  .wave-stack[data-lanes="2"] {
+    --lane-h: 78px;
+  }
+
+  .wave-meters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px 14px;
+    padding: 9px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+  }
+  .wm-stack {
+    flex: 1 1 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px 14px;
+  }
+  .wm-head {
+    flex: 0 0 auto;
+  }
+  /* one row of four cells; the labels sit against their numbers rather than
+     being pushed to the far side of a stretched cell */
+  .wm-grid {
+    flex: 1 1 auto;
+    grid-template-columns: repeat(4, auto);
+    justify-content: space-between;
+    gap: 0 14px;
+    max-width: 460px;
+  }
+  .wm-cell {
+    justify-content: flex-start;
+  }
+  /* 58% forces the scale onto its own line under the numbers, with correlation
+     beside it — a wrap that is chosen rather than discovered */
+  .wm-lu {
+    flex: 1 1 58%;
+    min-width: 160px;
+  }
+  .wm-corr {
+    flex: 1 1 30%;
+    min-width: 130px;
+  }
+  .wm-foot {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .wm-note {
+    flex: 1 1 100%;
+  }
+  .wm-level,
+  .wm-level.masked-panel {
+    flex: 1 1 100%;
+    height: 34px;
+  }
+
+  /* The rail is a two-line thing from here down, so it is composed as one: the
+     separators and the wide layout's spacer go (a hairline dangling at the end
+     of a wrapped line reads as something missing, and the spacer would eat the
+     free space that puts polarity at the right-hand end), level match stops
+     stretching across a line of its own, and polarity sits at the right — under
+     the end of the line above it rather than adrift at the left. */
+  .rail-sep,
+  .ab-rail .spacer {
+    display: none;
+  }
+  .tr-toggle.match {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .invert-group {
+    margin-left: auto;
+  }
+  .align-note {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  /* "−100 ms" broken over two lines makes the row 14 px taller and reads no
+     better; the row is allowed to wrap, the labels inside it are not */
+  .nudges button {
+    white-space: nowrap;
+  }
+
+  /* the badge rail was centred over the lanes only because the cluster used to
+     eat the right-hand end of the region; now it can use the whole width */
+  .badge-rail {
+    right: 0;
+    top: calc(var(--titlebar-h) + 42px);
+  }
+}
+
+/* ── ≤679: only controls that exist nowhere else ───────────────────────────
+   Everything dropped here is either keyboard-bound or set-once, and all of it
+   is still listed under `?`. */
+@media (max-width: 679px) {
+  .wave-stack {
+    padding: 12px 12px 10px;
+    --lane-h: 98px;
+  }
+  .wave-stack[data-lanes="2"] {
+    --lane-h: 66px;
+  }
+  .lane-name {
+    max-width: 46%;
+  }
+  /* [ ] \ still switch the monitor mode, and the badge rail says when it is
+     not stereo — which is the part you must not miss (SPEC §6) */
+  .monitor {
+    display: none;
+  }
+  /* engine rate and bit-transparency are in Settings and in the badge rail */
+  .wm-foot {
+    display: none;
+  }
+  /* ⌥, / ⌥. nudge by a single sample; the pair of buttons costs ~100 px */
+  .nudges button[data-fine="true"] {
+    display: none;
+  }
+  .ab-rail-title,
+  .align-group > .label {
+    display: none;
+  }
+  /* Now that the rail is two lines for good, put the small controls together on
+     the first one: level match and polarity are both "what this deck sounds
+     like", and time alignment is the wide group that gets the second line to
+     itself. Written order would have given [match][align…] / [polarity]. */
+  .align-group {
+    order: 1;
+  }
+  .align-note {
+    order: 2;
+  }
+  .tb-file {
+    max-width: 100%;
+  }
+  .transport {
+    gap: 9px;
+    padding: 0 12px;
+  }
+  .tr-time {
+    margin-left: 0;
+  }
+  /* the slider stays — the number it prints does not (↑ / ↓ are ±1 dB) */
+  .vol {
+    width: 92px;
+  }
+  .vol-db {
+    display: none;
+  }
+  .ab-cluster {
+    padding-left: 8px;
+  }
+  /* the title bar keeps the name and the three panel buttons; the format badge
+     goes with the rest of the second-hand information (it is in the file-name
+     tooltip and in Settings) */
+  .tb-badge,
+  .tb-center .dot,
+  .tb-blind-tail {
+    display: none;
+  }
+  .tb-left,
+  .tb-right {
+    min-width: 0;
+  }
+  .tb-btn {
+    padding: 0 7px;
+    gap: 4px;
+  }
+  .pl-head,
+  .pl-cols,
+  .pl-row {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .pl-grid {
+    grid-template-columns: 24px minmax(120px, 1fr) minmax(88px, 0.42fr) 38px 52px;
+    gap: 9px;
+  }
+  .sb-m {
+    display: none;
+  }
+}
+
+/* ── ≤599: the transport splits ────────────────────────────────────────────
+   Around 600 px the transport stops fitting on one line: prev/play/next, the
+   position, loop, the volume slider and the A/B cluster want ~620 px between
+   them. Rather than letting flex-wrap decide which of them falls off the end —
+   which put the A/B switch on a second line hugging the left while the first
+   line still had free space at its right — it becomes an explicit two-row grid.
+   The rows are chosen: what you press while listening on the first, what you
+   set up on the second, with A|B in the corner your thumb is already near. */
+@media (max-width: 599px) {
+  /* Transport, as a two-row grid rather than a wrap lottery:
+       row 1  ▸ prev · play · next   0:31 / 4:12            loop
+       row 2  ▸ mute + volume                        A/B  A|B  blind  */
+  .transport {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    height: auto;
+    padding: 9px 12px;
+  }
+  .tr-group {
+    grid-area: 1 / 1;
+  }
+  .tr-time {
+    grid-area: 1 / 2;
+    justify-self: start;
+  }
+  /* the loop button is the transport's only direct toggle */
+  .transport > .tr-toggle {
+    grid-area: 1 / 3;
+    justify-self: end;
+  }
+  .tr-spacer {
+    display: none;
+  }
+  .vol {
+    grid-area: 2 / 1 / 3 / 3;
+    width: auto;
+  }
+  .ab-cluster {
+    grid-area: 2 / 3;
+    justify-self: end;
+    height: auto;
+    padding-left: 0;
+    border-left: none;
+  }
+  /* the trim is on the rail above, next to the switch that applies it */
+  .tr-trim {
+    display: none;
+  }
+}
+
+/* ── ≤479: the compact player ──────────────────────────────────────────────
+   The 420 px case. Three things have to be true: the waveform is still a
+   waveform (bars adapt to the width, so it thins rather than stretches), the
+   playlist is still readable and clickable, and play/pause/seek/A|B are still
+   under the thumb. Everything else is spent to buy that. */
+@media (max-width: 479px) {
+  /* the transport becomes two rows, so its height is no longer fixed */
+  .app {
+    grid-template-rows: var(--titlebar-h) minmax(0, 1fr) auto auto auto;
+  }
+
+  /* title bar: the wordmark and the three panel buttons stay, the badge and the
+     LUFS number go — both are one row down in the meter strip and the lane */
+  .app:not([data-platform="mac"]) .titlebar {
+    padding-left: 10px;
+  }
+  .tb-left,
+  .tb-right {
+    min-width: 0;
+  }
+  .tb-center {
+    padding: 0 8px;
+  }
+  .tb-file {
+    max-width: 100%;
+  }
+  .tb-badge,
+  .tb-lufs,
+  .tb-center .dot,
+  /* the Blind button is lit and the meters are masked: what this line still has
+     to say at 420 px is which trial you are on */
+  .tb-blind-word {
+    display: none;
+  }
+  /* 34 px is still a comfortable target and buys the track name 36 px */
+  .tb-win {
+    width: 34px;
+  }
+  .tb-btn {
+    padding: 0 6px;
+  }
+
+  .wave-stack {
+    padding: 10px 10px 8px;
+    --lane-h: 88px;
+  }
+  .wave-stack[data-lanes="2"] {
+    --lane-h: 58px;
+  }
+  /* the lane head keeps the deck letter, the name, AUDIBLE, and the two things
+     you cannot see anywhere else: polarity and the match trim */
+  .lane-artist {
+    display: none;
+  }
+  .lane-meta:not(.lane-trim):not(.lane-invert) {
+    display: none;
+  }
+  .lane-name {
+    max-width: 62%;
+  }
+
+  .wave-meters {
+    gap: 8px 10px;
+  }
+  .wm-int {
+    font-size: 18px;
+  }
+  .wm-grid {
+    gap: 0 10px;
+  }
+  .wm-lu {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .wm-corr {
+    flex: 1 1 100%;
+  }
+  .wm-level,
+  .wm-level.masked-panel {
+    height: 32px;
+  }
+
+  /* Playlist: title (two lines), deck, time. The index and the artist go — the
+     row is identified by the title with the file name under it, which is what
+     you actually scan for, and 40 px rows are a better tap target than the
+     30 px ones a five-column table needs. */
+  .pl-head {
+    padding: 10px 10px 8px;
+    gap: 8px;
+  }
+  .pl-count {
+    font-size: 9.5px;
+  }
+  .pl-head,
+  .pl-cols,
+  .pl-row {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .pl-i,
+  .pl-artist {
+    display: none;
+  }
+  .pl-grid {
+    grid-template-columns: minmax(0, 1fr) 34px 50px;
+    gap: 10px;
+  }
+  .pl-row {
+    height: 40px;
+  }
+  .pl-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    line-height: 1.3;
+    white-space: normal;
+  }
+  .pl-title > * {
+    max-width: 100%;
+  }
+  .pl-sub {
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+
+  /* A/B rail: the two lines the ≤679 step set up, tightened, with the 100 ms
+     nudges spent on making the remaining ones full-size targets. ⇧, / ⇧. is
+     that step, and the read-out in the middle shows what it did. */
+  .ab-rail {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 8px 10px;
+  }
+  .nudges button[data-coarse="true"] {
+    display: none;
+  }
+  .align-group {
+    flex: 0 1 auto;
+    gap: 8px;
+  }
+  .nudge-mid {
+    min-width: 78px;
+    padding: 0 5px;
+  }
+
+  .transport {
+    gap: 8px 10px;
+    padding: 8px 10px;
+  }
+  /* icon-only: Loop and Blind are drawn, and both are in the overlay */
+  .tr-word {
+    display: none;
+  }
+  .transport > .tr-toggle,
+  .blind-btn {
+    padding: 0 9px;
+  }
+
+  /* overlays and panels stop being fixed-width things floating in a 420 px
+     window: they take the window, minus a margin */
+  .float-panel {
+    width: calc(100vw - 20px);
+    right: 10px;
+    left: 10px;
+  }
+  .float-panel.blind {
+    width: calc(100vw - 20px);
+  }
+  .shortcut-card {
+    width: calc(100vw - 20px);
+    padding: 18px 14px 14px;
+  }
+  .shortcut-grid {
+    grid-template-columns: 1fr;
+  }
+  .toasts {
+    left: 10px;
+    right: 10px;
+  }
+  .toast {
+    min-width: 0;
+  }
+  .drop-frame {
+    padding: 28px 20px;
+  }
+  .state-badge {
+    max-width: calc(100vw - 20px);
+  }
+  .badge-rail {
+    padding: 0 10px;
+    top: calc(var(--titlebar-h) + 36px);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Short windows
+
+   Width is not the only axis. The floor is 420 x 560, and at 560 px tall the
+   stage has to hold two waveform lanes, the meter strip *and* enough of the
+   playlist to pick a track with, while the A/B rail and the transport under it
+   are two rows each. So height gets its own ladder, deliberately independent of
+   width: a wide-but-short window (1180 x 560 — the shape you get when the DAW
+   owns the top of the screen) needs the same treatment as a small square one.
+
+   Height is spent on, in order: the lanes' air, the lanes themselves, the one
+   graphic in the meter strip whose numbers are printed elsewhere, and the row
+   height of the playlist.
+
+     <=700  the air goes: lane padding, strip padding, playlist header padding.
+     <=640  the lanes go thinner and the loudness *scale* goes — momentary,
+            short-term and integrated are all printed as numbers 20 px above it.
+            Playlist rows tighten to 28 px (still a comfortable target for a
+            single-line row).
+     <=580  the lanes go to their floor, the L/R meter to 24 px.
+
+   Protected at every height: a scrollable playlist viewport of at least two
+   full rows, the four read-outs and the L/R meter, and nothing clipped by
+   `.stage`'s `overflow: hidden`. `--lane-cap` rather than `--lane-h` so that
+   the narrow ladder and this one cannot fight over cascade order — the drawn
+   lane is the smaller of the two.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 700px) {
+  .wave-stack {
+    padding-top: 11px;
+    padding-bottom: 9px;
+    --lane-cap: 104px;
+  }
+  .wave-stack[data-lanes="2"] {
+    --lane-cap: 64px;
+  }
+  .wave-lane {
+    gap: 6px;
+    padding: 6px 0 7px;
+  }
+  .wave-meters {
+    padding-top: 8px;
+    padding-bottom: 7px;
+  }
+  .pl-head {
+    padding-top: 9px;
+    padding-bottom: 6px;
+  }
+  .pl-rows {
+    padding-bottom: 6px;
+  }
+}
+
+@media (max-height: 640px) {
+  .wave-stack {
+    padding-top: 9px;
+    padding-bottom: 7px;
+    --lane-cap: 88px;
+  }
+  .wave-stack[data-lanes="2"] {
+    --lane-cap: 52px;
+  }
+  .wave-lane {
+    gap: 5px;
+    padding: 5px 0 6px;
+  }
+  /* The loudness strip is the only graphic in the cluster whose whole content is
+     printed as numbers immediately above it (M, S, and the big integrated
+     figure). In a short window that trade goes the other way, so it goes — and
+     it goes whether it is the canvas or its blind-test mask, which keeps the
+     strip the same shape during a test as outside one (SPEC §7). */
+  .wm-lu {
+    display: none;
+  }
+  .wm-stack {
+    gap: 7px;
+  }
+  .wm-level,
+  .wm-level.masked-panel {
+    height: 28px;
+  }
+  .pl-head {
+    padding-top: 7px;
+    padding-bottom: 5px;
+  }
+  .pl-row {
+    height: 28px;
+  }
+  .pl-rows {
+    padding-top: 2px;
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-height: 580px) {
+  .wave-stack[data-lanes="2"] {
+    --lane-cap: 44px;
+  }
+  .wm-level,
+  .wm-level.masked-panel {
+    height: 24px;
+  }
+  .wave-meters {
+    padding-top: 7px;
+    padding-bottom: 5px;
+  }
+  .wm-stack {
+    gap: 6px;
+  }
+  /* the last ~14 px the playlist needs for its second full row: at this height
+     the two bottom bars are two rows each, and their row gap is air */
+  .transport,
+  .ab-rail {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    row-gap: 6px;
+  }
+}
+
+/* The compact player, short with it — the 420 x 560 floor. Two-line rows need
+   more than 28 px, and the column header of a three-column table is furniture
+   at this size: "title / deck / time" is not a thing anyone needs told. */
+@media (max-width: 479px) and (max-height: 700px) {
+  .pl-cols {
+    display: none;
+  }
+  .pl-row {
+    height: 36px;
+  }
+  .pl-count {
+    display: none;
+  }
+  .pl-head {
+    padding-bottom: 4px;
+  }
+}

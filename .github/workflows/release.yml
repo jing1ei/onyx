@@ -1,0 +1,190 @@
+# Build the shipping bundles and attach them to a *draft* GitHub Release.
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# produces, on the release the tag names:
+#
+#   Onyx_<version>_universal.dmg      macOS 11+, Apple silicon + Intel in one
+#   Onyx.app (zipped)                 the same bundle, for anyone who wants it
+#   Onyx_<version>_x64-setup.exe      Windows 10/11 x64, NSIS, per-user install
+#
+# Linux is deliberately absent: the README calls the .deb a development smoke
+# test rather than a shipping target, and CI builds it on every push instead.
+#
+# The release is left as a **draft** on purpose — nothing is published until a
+# human has downloaded both artifacts, opened them and pressed Publish. That is
+# the only place the "never been built or run" caveat in the README can be
+# retired honestly.
+#
+# Signing is opt-in and every secret is optional; with none of them set the
+# build still succeeds and produces unsigned artifacts (macOS Gatekeeper will
+# quarantine the .dmg, Windows SmartScreen will warn). To sign:
+#
+#   APPLE_CERTIFICATE            base64 of a Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD   its password
+#   APPLE_SIGNING_IDENTITY       "Developer ID Application: Name (TEAMID)"
+#   KEYCHAIN_PASSWORD            any string; the temporary CI keychain's password
+#
+# and, to notarise as well (Tauri staples the ticket):
+#
+#   APPLE_ID · APPLE_PASSWORD (an app-specific password) · APPLE_TEAM_ID
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and draft a release for (e.g. v1.0.0). It must already exist."
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # Nothing is built until the tag and the four version strings agree and the
+  # suite is green. A wrong number here is an installer on someone's disk
+  # claiming a version that was never released.
+  verify:
+    name: verify the tag and run the suite
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - name: which tag
+        id: tag
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "Building $tag."
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: install the linux webview toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            libasound2-dev \
+            libssl-dev \
+            pkg-config \
+            build-essential
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-verify
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: the tag matches every version string in the tree
+        run: node scripts/check-version.mjs "${{ steps.tag.outputs.tag }}"
+
+      - name: the front-end contract checks and the bundle
+        run: npm run build
+
+      - name: cargo test --workspace
+        run: cargo test --workspace --locked
+
+  build:
+    name: ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal (.app + .dmg)
+            os: macos-latest
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
+          - name: Windows x64 (NSIS installer)
+            os: windows-latest
+            rust-targets: ""
+            args: --bundles nsis
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.os }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # tauri-action runs `npm run tauri build -- <args>`; tauri.conf.json's
+      # beforeBuildCommand is `npm run build`, so the version check, the four
+      # contract checks and tsc all run again inside the release build itself.
+      # It creates the release on first use and uploads into the same one from
+      # the second job.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # All optional. Empty means "build unsigned", not "fail".
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ needs.verify.outputs.tag }}
+          releaseName: Onyx ${{ needs.verify.outputs.version }}
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+          releaseBody: |
+            <!-- Replace this with the CHANGELOG.md entry for this version before publishing. -->
+
+            ### Downloads
+
+            | Platform | File |
+            |---|---|
+            | macOS 11+ (Apple silicon + Intel) | `Onyx_${{ needs.verify.outputs.version }}_universal.dmg` |
+            | Windows 10/11 x64 | `Onyx_${{ needs.verify.outputs.version }}_x64-setup.exe` |
+
+            **These builds are unsigned unless the signing secrets were set for this run.**
+            macOS: the first launch needs right-click → Open (Gatekeeper quarantines
+            anything downloaded and unsigned). Windows: SmartScreen shows
+            "Windows protected your PC" → More info → Run anyway. The installer is
+            per-user and registers the file associations; the bare `.exe` does not.
+
+      # Belt and braces: the same files on the workflow run itself, so a
+      # failed or deleted draft release does not mean a 20-minute rebuild.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onyx-${{ needs.verify.outputs.version }}-${{ matrix.os }}
+          path: |
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/nsis/*.exe
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,536 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Onyx — the detached EQ window (SPEC §12)
+
+   The stylesheet for `eq.html`, and the only one it loads besides the shared
+   design tokens. These rules used to live in `src/styles/app.css`, sized to a
+   288 px drawer wedged into the main window's grid; they are here now because
+   the EQ is a window, and because leaving them in the main sheet would have
+   meant every launch parsing the layout of a panel that document no longer
+   contains.
+
+   What was *not* moved: `.eq-hint`, which the settings and blind-test panels
+   also use and which therefore still belongs to the main window's sheet. It is
+   redeclared below rather than shared — two small copies of five lines is a
+   cheaper price than a third stylesheet both windows must load in the right
+   order.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── the window itself ─────────────────────────────────────────────────── */
+
+.eq-window {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  background: var(--bg-eq);
+}
+
+/* The panel fills the window rather than a drawer of a fixed height: the user
+   resizes this window to whatever their curve work needs, and the graph is the
+   thing that should grow. */
+.eq-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.eq-inner {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 318px;
+}
+
+.eq-left {
+  display: grid;
+  /* `minmax(0, 1fr)`, not the implicit `auto`: an auto column is sized to the
+     widest thing in it, and the header's one-line gesture legend is wider than
+     the window. With `auto` the graph was drawn 854px wide inside a 622px
+     column and ran underneath the band list. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  padding: 12px 0 14px 18px;
+}
+
+.eq-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 16px;
+  margin-bottom: 10px;
+}
+.eq-head > .label,
+.eq-head > button {
+  flex: none;
+}
+.eq-head .spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.eq-canvas-wrap {
+  position: relative;
+  min-height: 0;
+  margin-right: 16px;
+  border-radius: 6px;
+  background: var(--well-canvas);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+}
+.eq-canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The sweep outline. Written from the frame loop as a `data-` attribute, never
+   through React — see `EqPanel`. */
+.eq-canvas-wrap[data-sweeping="true"] {
+  box-shadow: inset 0 0 0 1px rgb(var(--m-hot-rgb) / 0.55);
+}
+
+.eq-right {
+  border-left: 1px solid var(--hairline);
+  padding: 12px 16px 14px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  min-height: 0;
+}
+
+.eq-hint {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+.eq-head-hint {
+  text-align: right;
+  /* one line, always: the wrapped form pushed a lone `·` onto a second row and
+     the header grew by 12px the moment a sweep read-out appeared */
+  white-space: nowrap;
+}
+.eq-head-hint b {
+  white-space: nowrap;
+}
+.eq-head .eq-hint b {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.eq-readout {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  /* Reserved, not demanded: `min-width` holds 132px open so the header does not
+     jump when a sweep read-out appears, and an `auto` basis lets a longer one
+     take the room the spacer was holding. Both give way — see the narrow
+     breakpoints — before the header can push the row wider than the window. */
+  flex: 0 1 auto;
+  min-width: 132px;
+  /* `SOLO 1.10 kHz · C#6 · Q 11.6` is the longest state this can hold; letting
+     it wrap grew the header by a line every time a sweep started */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* ── the filter-type menu ──────────────────────────────────────────────── */
+
+.eq-menu {
+  position: absolute;
+  z-index: 20;
+  min-width: 158px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--surface-menu);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  animation: fade-in 120ms var(--ease);
+  cursor: default;
+}
+.eq-menu-head {
+  font-size: 8.5px;
+  padding: 5px 7px 4px;
+  color: var(--text-faint);
+}
+.eq-menu-head + .eq-menu-head {
+  border-top: 1px solid var(--hairline);
+  margin-top: 4px;
+}
+.eq-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-mid);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.eq-menu-item:hover {
+  color: var(--text-hi);
+  background: var(--fill-hover);
+}
+.eq-menu-item[data-on="true"] {
+  color: var(--accent);
+}
+.eq-menu-item[data-danger="true"] {
+  color: var(--m-hot);
+  margin-top: 4px;
+  border-top: 1px solid var(--hairline);
+  border-radius: 0 0 4px 4px;
+}
+.eq-menu-item[data-danger="true"]:hover {
+  background: rgb(var(--m-clip-rgb) / 0.12);
+}
+.eq-menu-slopes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 2px 4px 4px;
+}
+.eq-menu-slopes button {
+  height: 22px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.eq-menu-slopes button:hover {
+  color: var(--text-hi);
+}
+.eq-menu-slopes button[data-on="true"] {
+  color: var(--ink-900);
+  background: var(--accent);
+}
+
+/* ── the band list ─────────────────────────────────────────────────────── */
+
+.eq-right-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.eq-right-head .spacer {
+  flex: 1;
+}
+.eq-count {
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+
+.eq-rows {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
+
+.eq-row {
+  display: grid;
+  /* the Q column only ever holds `Q 12.5`; the 44px it used to get was stolen
+     from the frequency cell, which then ellipsed `1.45 kHz · F#6` */
+  grid-template-columns: 30px minmax(0, 1fr) 46px 36px 17px 17px 15px;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 3px;
+  transition: background var(--t-hover) var(--ease);
+}
+.eq-row:hover {
+  background: var(--fill-input);
+}
+.eq-row[data-off="true"] {
+  opacity: 0.42;
+}
+.eq-row .f {
+  font-size: 10px;
+  color: var(--text-hi);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eq-row .g {
+  font-size: 10px;
+  color: var(--accent);
+  text-align: right;
+  /* `+9.5 dB` is one token: a narrow column broke it after the number and the
+     second line fell straight out of the 24px row. */
+  white-space: nowrap;
+}
+/* `Q 1.00` is one token: a 30px column wrapped it onto two lines, which
+   overflowed the 24px row and read as a rendering fault. */
+.eq-row .q {
+  font-size: 9px;
+  color: var(--text-lo);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.eq-row-kind {
+  height: 17px;
+  border-radius: 2px;
+  font-family: var(--font-num);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease);
+}
+.eq-row-kind:hover {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.35);
+}
+
+.eq-row-btn {
+  height: 17px;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 1;
+  /* faint (0.16 alpha) made the solo / bypass / delete controls all but
+     invisible against the panel; lo keeps them quiet but findable */
+  color: var(--text-lo);
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.eq-row-btn:hover {
+  color: var(--text-hi);
+  background: var(--fill-menu);
+}
+.eq-row-btn[data-on="true"] {
+  color: var(--text-mid);
+}
+.eq-row-btn.solo:hover,
+.eq-row-btn.solo:active {
+  color: var(--m-hot);
+}
+.eq-row-btn.danger:hover {
+  color: var(--m-hot);
+  background: rgb(var(--m-clip-rgb) / 0.12);
+}
+
+.eq-empty {
+  padding: 14px 4px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+.eq-foot-hint {
+  border-top: 1px solid var(--hairline);
+  padding-top: 9px;
+}
+
+/* ── the few shared primitives this window uses ────────────────────────── */
+
+.spacer {
+  flex: 1;
+}
+
+.tr-toggle {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: all var(--t-hover) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tr-toggle:hover {
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+.tr-toggle[data-on="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.35);
+}
+
+.ghost-btn {
+  height: 21px;
+  padding: 0 9px;
+  border-radius: var(--r-control);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease),
+    background var(--t-hover) var(--ease);
+}
+.ghost-btn:hover {
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: var(--fill-ghost);
+}
+.ghost-btn[data-on="true"] {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.3);
+}
+.ghost-btn:disabled {
+  opacity: 0.4;
+}
+
+.close-btn {
+  color: var(--text-faint);
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--r-control);
+  transition: color var(--t-hover) var(--ease);
+}
+.close-btn:hover {
+  color: var(--text-hi);
+}
+
+.connecting {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Toasts: the EQ window raises its own ("EQ rejected: …"), and it must not
+   have to look at the other window to find out that a write failed. Bottom
+   right, without the transport-bar offset the main window needs. */
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 95;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  max-width: 380px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: var(--surface-toast);
+  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--hairline-strong);
+  backdrop-filter: blur(16px);
+  font-size: 11.5px;
+  color: var(--text-hi);
+  pointer-events: auto;
+  animation: toast-in 260ms var(--ease);
+}
+.toast i {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
+}
+.toast[data-kind="warn"] i {
+  background: var(--m-hot);
+}
+.toast[data-kind="error"] i {
+  background: var(--m-clip);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The header legend is the first thing to go, then the band list. The graph is
+   the instrument; the legend is a reminder and the list a read-out of it, and
+   the whole gesture map is repeated in the band list's footer hint so nothing
+   is actually lost at any width. Below the window's minimum (620px,
+   `src-tauri/src/eqwindow.rs`) nothing here is reachable anyway. */
+@media (max-width: 1200px) {
+  .eq-head-hint .verbose {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .eq-head-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  /* 252px, not 244: the last eight pixels of the list are worth more than the
+     last eight of the graph, because they are the difference between
+     `1.91 kHz · A♯6` and `1.91 kHz …`. */
+  .eq-inner {
+    grid-template-columns: minmax(0, 1fr) 252px;
+  }
+  /* Nothing left to reserve space for: the read-out now ellipses instead. */
+  .eq-readout {
+    min-width: 0;
+  }
+  /* Q goes before the frequency does. `1.91 kHz · A♯6` is what the row is
+     *for*; squeezing it to 35px so `Q 1.00` could stay was the wrong trade,
+     and Q is on the node's own label the moment the pointer is over it. */
+  .eq-row {
+    grid-template-columns: 24px minmax(0, 1fr) 46px 16px 16px 13px;
+    gap: 3px;
+  }
+  .eq-row .q {
+    display: none;
+  }
+  .eq-row .f,
+  .eq-row .g {
+    font-size: 9.5px;
+  }
+}
+
+/* This is as narrow as the window goes. The band list keeps its 244px — the
+   list stops being a list at all below that — and the header gives up its
+   title instead. */
+@media (max-width: 700px) {
+  /* `Equaliser` is the window's own title too; the header can spare it. */
+  .eq-head > .label {
+    display: none;
+  }
+  .eq-head {
+    gap: 8px;
+  }
+  .eq-left {
+    padding-left: 12px;
+  }
+  .eq-right {
+    padding: 12px 12px 14px;
+  }
+}
