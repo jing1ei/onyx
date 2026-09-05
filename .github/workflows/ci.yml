@@ -1,0 +1,172 @@
+# Every check this repository has, run on every push and pull request.
+#
+# The split mirrors the two halves of the tree: `frontend` is the TypeScript
+# side and the four contract checks that pin it to the engine, `rust` is the
+# cargo workspace on all three platforms, and `bundle` proves the Tauri bundle
+# configuration still produces a package. Release artifacts are *not* built
+# here — that is .github/workflows/release.yml, which runs on a tag.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  frontend:
+    name: front end · typecheck + contract checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Run each check on its own line rather than through `npm run build`, so
+      # a failure names itself in the job list instead of hiding in one step.
+      - name: version — the four files and the lockfile agree
+        run: npm run check:version
+      - name: typecheck (tsc --noEmit)
+        run: npm run typecheck
+      - name: IPC surface — SPEC §3.1 · generate_handler! · api.ts · the mock
+        run: npm run check:ipc
+      - name: EQ curve — the drawn curve against the engine's coefficients
+        run: npm run check:eq
+      - name: A/B parity — the mock backend against the engine
+        run: npm run check:ab
+      - name: theme contract — catalogue · parser · sanitiser · contrast · storage
+        run: npm run check:theme
+
+      - name: vite bundle (dist/)
+        run: npm run build
+      - name: vite bundle, mock IPC (dist-mock/)
+        run: npm run build:mock
+
+      # The three documents of SPEC §5 have to be in the bundle, not merely
+      # buildable: a missing eq.html is a blank window at runtime, and the
+      # build itself would not have said a word.
+      - name: dist/ carries all three documents
+        run: |
+          for doc in index.html eq.html theme.html; do
+            test -s "dist/$doc" || { echo "::error::dist/$doc missing or empty"; exit 1; }
+          done
+          echo "index.html, eq.html and theme.html are all present."
+
+  rust:
+    name: rust · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install the linux webview toolchain
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            libasound2-dev \
+            libssl-dev \
+            pkg-config \
+            build-essential
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The workspace target dir is at the repo root (root Cargo.toml with
+          # members src-tauri and crates/onyx-core), which is what rust-cache
+          # assumes; named so the three platforms do not share a key.
+          key: ${{ matrix.os }}
+          cache-on-failure: true
+
+      # tauri.conf.json points frontendDist at ../dist, and tauri-build reads
+      # it: without a bundle on disk, anything that links the app fails before
+      # a single test runs.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: cargo fmt --check
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (warnings are errors)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # The wide alignment sweep is #[ignore]d by design — minutes, not seconds
+      # — so it is not part of the ordinary run.
+      - name: cargo test --workspace
+        run: cargo test --workspace --locked
+
+  bundle:
+    name: linux .deb — the bundle configuration is valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install the linux webview toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            libasound2-dev \
+            libssl-dev \
+            pkg-config \
+            build-essential
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: bundle
+          cache-on-failure: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Linux is a development smoke test, not a shipping target (README,
+      # "Building releases"). What this proves is that tauri.conf.json, the
+      # icons, the dist/ wiring, the file associations, the bundled SoundFont
+      # licence and the linking are all still valid — which is exactly what
+      # would otherwise only be discovered on a tag.
+      - name: npx tauri build --bundles deb
+        run: npx tauri build --bundles deb
+
+      - name: what came out
+        run: ls -l target/release/bundle/deb/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onyx-deb-smoke-test
+          path: target/release/bundle/deb/*.deb
+          if-no-files-found: error
+          retention-days: 7

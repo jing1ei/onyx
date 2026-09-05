@@ -1,0 +1,61 @@
+[workspace]
+members = ["src-tauri", "crates/onyx-core"]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["Onyx Audio"]
+repository = "https://github.com/jing1ei/onyx"
+homepage = "https://github.com/jing1ei/onyx"
+
+[workspace.dependencies]
+onyx-core = { path = "crates/onyx-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+parking_lot = "0.12"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+rtrb = "0.3"
+thiserror = "2"
+log = "0.4"
+rustfft = "6"
+rubato = "0.16"
+cpal = "0.15"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+# The audio engine must stay fast even in debug builds, otherwise
+# `tauri dev` under-runs the output callback.
+[profile.dev.package.onyx-core]
+opt-level = 2
+
+[profile.dev.package.rubato]
+opt-level = 2
+
+[profile.dev.package.rustfft]
+opt-level = 2
+
+[profile.dev.package.symphonia]
+opt-level = 2
+
+[profile.dev.package.symphonia-bundle-flac]
+opt-level = 2
+
+[profile.dev.package.symphonia-bundle-mp3]
+opt-level = 2
+
+[profile.dev.package.symphonia-codec-aac]
+opt-level = 2
+
+[profile.dev.package.symphonia-codec-alac]
+opt-level = 2
+
+[profile.dev.package.symphonia-codec-vorbis]
+opt-level = 2

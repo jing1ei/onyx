@@ -1,0 +1,718 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Onyx design tokens — SPEC.md §4, SPEC.md §14/§15
+
+   Two designed themes, not one theme with inverted colours.
+
+     dark   obsidian gallery at night. Dark, quiet, expensive. The identity;
+            every value below is the one it always was.
+     light  warm alabaster paper under a gallery light. Bronze where dark is
+            champagne, ink where dark is a white wash, and *its own* canvas
+            values — a bar alpha tuned against near-black is a wash on paper.
+
+   How a theme is chosen: `src/lib/theme.ts` writes `data-theme="dark|light"`
+   on <html> (always resolved — never `"system"`), together with
+   `data-ui-font`, `data-num-font`, `data-scale` and the accent family as
+   custom properties. Nothing else in the app may state a colour.
+
+   `:root` carries the dark theme on its own as well as under the attribute, so
+   a window whose script has not run yet — or one where it failed — still
+   renders the identity rather than an unstyled page.
+
+   The accent group is written at runtime by `theme.ts` (`accentFamily()`),
+   which derives `--accent`, `--accent-hi`, `--accent-press`, `--accent-deep`
+   and `--accent-ink` from the single hex the user chose. The values declared
+   here are the champagne defaults, and the derivation reproduces them exactly
+   for the default accent, so this sheet is complete on its own.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Theme-independent: geometry, motion, type
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* geometry */
+  --r-control: 2px;
+  --r-panel: 10px;
+  --titlebar-h: 36px;
+  --transport-h: 64px;
+  /* the metering column inside the waveform region */
+  --meters-w: 216px;
+  --mac-inset: 78px;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-hover: 120ms;
+  --t-panel: 320ms;
+  --t-slow: 420ms;
+
+  /* Root scale factor (§15): applied by `theme.ts` as CSS `zoom` on <html>,
+     capped so `large` cannot squeeze the layout below its 420 × 560 floor. */
+  --zoom: 1;
+
+  /* Type. The two slots are tokens, not families: `data-ui-font` and
+     `data-num-font` pick a stack from the lists near the end of this file, and
+     every stack is built from faces the platform already has. Nothing is
+     fetched at runtime — the CSP forbids remote origins and this is an offline
+     tool. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-num: "SF Mono", ui-monospace, "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* The body size everything that does not state its own size inherits, and the
+     two tracking values the shared primitives at the end of this file use: the
+     all-caps section labels, and the tabular read-outs. Tokens rather than
+     literals because a theme document (SPEC §20) can move them, and because a
+     display face usually wants different tracking from a grotesque. */
+  --font-size-base: 13px;
+  --ls-label: 0.14em;
+  --ls-num: 0;
+
+  /* Waveform bar geometry (§20). Read by `WaveformLane`, not by CSS: the bar
+     pitch in CSS px before device-pixel snapping, and the share of that pitch
+     the bar itself gets. They live here because they are the one part of the
+     waveform's *look* that is not a colour. */
+  --wf-bar-step: 5;
+  --wf-bar-duty: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK — the identity (SPEC §4)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── surfaces ─────────────────────────────────────────────────────────── */
+  --ink-900: #0a0a0c;
+  --ink-850: #0d0d10;
+  --ink-800: #101014;
+  /* named by SPEC §4 as the raised-surface ink; kept so the palette in the
+     spec and the palette in the code are the same list */
+  --ink-700: #16161b;
+
+  /* Floating things. Each is a blurred surface over the app rather than a fill
+     on a known background, so they are near-opaque colours of their own. */
+  --surface-panel: rgba(18, 18, 22, 0.96);
+  --surface-menu: rgba(20, 20, 25, 0.97);
+  --surface-toast: rgba(20, 20, 25, 0.95);
+  --surface-badge: rgba(20, 20, 25, 0.92);
+  --surface-card: rgba(16, 16, 20, 0.98);
+  --scrim: rgba(6, 6, 8, 0.72);
+  --scrim-drop: rgba(8, 8, 10, 0.6);
+
+  /* Backgrounds that carry shading of their own, as whole values rather than
+     stops: light does not want the same *shape* of shading, only the same job. */
+  --stage-glow-a: rgb(var(--accent-rgb) / 0.045);
+  --stage-glow-b: rgb(var(--deck-b-rgb) / 0.035);
+  --bg-app:
+    radial-gradient(1200px 620px at 18% -12%, var(--stage-glow-a), transparent 62%),
+    radial-gradient(900px 520px at 105% 8%, var(--stage-glow-b), transparent 60%), var(--ink-900);
+  --bg-eq:
+    radial-gradient(900px 480px at 12% -18%, rgb(var(--accent-rgb) / 0.05), transparent 62%),
+    radial-gradient(700px 420px at 108% 12%, rgb(var(--deck-b-rgb) / 0.035), transparent 60%),
+    var(--ink-900);
+  --bg-titlebar: linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent);
+  --bg-stage: linear-gradient(180deg, rgba(255, 255, 255, 0.014), rgba(0, 0, 0, 0.22));
+  --bg-transport: linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(0, 0, 0, 0.3)),
+    var(--ink-850);
+  --bg-rail: linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent);
+
+  /* sunken wells: the inset boxes segmented controls and canvases sit in */
+  --well: rgba(0, 0, 0, 0.28);
+  --well-deep: rgba(0, 0, 0, 0.3);
+  --well-canvas: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.15));
+
+  /* ── hairlines ────────────────────────────────────────────────────────── */
+  --hairline: rgba(255, 255, 255, 0.06);
+  --hairline-strong: rgba(255, 255, 255, 0.1);
+  /* the quietest rule in the app: table rows, reference-card rows */
+  --hairline-soft: rgba(255, 255, 255, 0.035);
+
+  /* ── overlay fills ───────────────────────────────────────────────────────
+     Named for the job, because the job is what light re-tunes: dark ink on
+     paper at the same alpha as white ink on obsidian does not weigh the same. */
+  --fill-row: rgba(255, 255, 255, 0.026);
+  --fill-ghost: rgba(255, 255, 255, 0.03);
+  --fill-quiet: rgba(255, 255, 255, 0.035);
+  --fill-input: rgba(255, 255, 255, 0.04);
+  --fill-sunken: rgba(255, 255, 255, 0.045);
+  --fill-hover: rgba(255, 255, 255, 0.055);
+  --fill-menu: rgba(255, 255, 255, 0.06);
+  --fill-hover-hi: rgba(255, 255, 255, 0.07);
+  --fill-track: rgba(255, 255, 255, 0.08);
+  /* blind-test masking: shape without content (SPEC §7) */
+  --masked-stripe: rgba(255, 255, 255, 0.022);
+
+  /* ── text ─────────────────────────────────────────────────────────────── */
+  --text-hi: rgba(255, 255, 255, 0.92);
+  --text-mid: rgba(255, 255, 255, 0.56);
+  --text-lo: rgba(255, 255, 255, 0.3);
+  --text-faint: rgba(255, 255, 255, 0.16);
+
+  /* ── accent ───────────────────────────────────────────────────────────────
+     Rewritten by `theme.ts` on every apply. These are SPEC §4's champagne —
+     `--gold-2` as the accent and `--gold` as its deep form — and are exactly
+     what the derivation returns for the default `#c9a227`. */
+  --accent: #e8d9a0;
+  --accent-rgb: 232 217 160;
+  --accent-hi: #f3e8bf;
+  --accent-hi-rgb: 243 232 191;
+  --accent-press: #cdb478;
+  --accent-deep: #c9a227;
+  --accent-deep-rgb: 201 162 39;
+  /* what to print on an accent fill; `theme.ts` picks the side by contrast */
+  --ink-on-accent-dark: var(--ink-900);
+  --ink-on-accent-light: #f6f2e6;
+  --accent-ink: var(--ink-on-accent-dark);
+  /* legacy names from SPEC §4's palette list, kept as aliases so anything
+     already reading them keeps working and stays themed */
+  --gold: var(--accent-deep);
+  --gold-2: var(--accent);
+  --selection: rgb(var(--accent-rgb) / 0.22);
+
+  /* ── decks ────────────────────────────────────────────────────────────────
+     A is the accent; B is cold steel and must stay instantly separable from it,
+     so `theme.ts` rotates B away if a custom accent invades its hue.
+     `--deck-b-src` is the theme's declared steel and is never overwritten. */
+  --deck-a: var(--accent);
+  --deck-b-src: #7fa8b8;
+  --deck-b: #7fa8b8;
+  --deck-b-rgb: 127 168 184;
+  --deck-b-ink: #08131a;
+
+  /* ── meter scale (SPEC §4) ────────────────────────────────────────────── */
+  --m-safe: #6fcf97;
+  --m-safe-rgb: 111 207 151;
+  /* SPEC §4 meter scale stop at -6 dB */
+  --m-warn: #e8d9a0;
+  --m-warn-rgb: 232 217 160;
+  --m-hot: #e07a5f;
+  --m-hot-rgb: 224 122 95;
+  --m-clip: #d64545;
+  --m-clip-rgb: 214 69 69;
+  /* the loudest colour in the app: a destructive action's hover text */
+  --m-clip-hi: #ff8f8f;
+  --m-hot-ink: #120a08;
+
+  /* Windows 11's own close-button red, in both themes: it is a platform
+     affordance, not part of this palette. */
+  --winctl-close: #c42b1c;
+  --winctl-close-ink: #ffffff;
+
+  /* elevation — a single soft ambient shadow, only on floating panels */
+  --shadow-float: 0 24px 60px rgba(0, 0, 0, 0.62), 0 2px 0 rgba(255, 255, 255, 0.03) inset;
+
+  /* The select's chevron: a data URI cannot read a variable, so the whole
+     image is the token. */
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.2'/></svg>");
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     Canvas — SPEC §14
+
+     A 2D context cannot read a variable, so `lib/theme.ts` resolves this group
+     explicitly on first paint and again on every theme change. It is a group
+     of its own because canvas needs *different* answers from the DOM: alphas
+     tuned against the field it draws on, an unplayed scrim that darkens on
+     obsidian and lightens on paper, and a blend mode that adds light in the
+     dark theme but must take it away in the light one.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* waveform lanes. The bar ink levels are per-theme numbers, because how much
+     of the lane's colour each layer gets is precisely what changes on paper. */
+  --wf-outer-a: 0.46;
+  --wf-core-a: 0.96;
+  --wf-cap-a: 0.34;
+  --wf-glow-a: 0.14;
+  --wf-decode-a: 0.34;
+  --wf-playhead-a: 0.95;
+  --wf-blend: lighter;
+  --wf-mid: rgba(255, 255, 255, 0.07);
+  --wf-skeleton: rgba(255, 255, 255, 0.05);
+  --wf-scrim: rgba(8, 8, 10, 0.66);
+  --wf-gap-fill: rgba(255, 255, 255, 0.018);
+  --wf-gap-line: rgba(255, 255, 255, 0.16);
+  --wf-gap-text: rgba(255, 255, 255, 0.3);
+  --wf-hover-line: rgba(255, 255, 255, 0.24);
+  --wf-playhead-idle: rgba(255, 255, 255, 0.35);
+  /* which colour a lane is drawn in */
+  --lane-a-rgb: var(--accent-rgb);
+  --lane-b-rgb: var(--deck-b-rgb);
+  --lane-masked-rgb: 188 188 196;
+  /* how far the lane that is *not* audible recedes (A/B on, SPEC §7) */
+  --lane-idle-o: 0.52;
+
+  --loop-fill: rgb(var(--accent-deep-rgb) / 0.1);
+  --loop-edge: rgb(var(--accent-rgb) / 0.5);
+  --loop-grip: rgb(var(--accent-rgb) / 0.9);
+  --align-chip: rgb(var(--deck-b-rgb) / 0.95);
+  --align-chip-ink: var(--deck-b-ink);
+  --align-line: rgb(var(--deck-b-rgb) / 0.85);
+
+  /* the read-outs canvases draw on themselves */
+  --tip-bg: rgba(10, 10, 13, 0.92);
+  --tip-line: rgba(255, 255, 255, 0.12);
+  --tip-text: rgba(255, 255, 255, 0.92);
+
+  /* level meter */
+  --mt-track: rgba(255, 255, 255, 0.035);
+  --mt-grid: rgba(255, 255, 255, 0.055);
+  --mt-grid-zero: rgba(255, 255, 255, 0.14);
+  --mt-label: rgba(255, 255, 255, 0.24);
+  --mt-label-zero: rgba(255, 255, 255, 0.34);
+  --mt-rms: rgba(255, 255, 255, 0.16);
+  --mt-chan: rgba(255, 255, 255, 0.3);
+  --mt-safe: rgb(var(--m-safe-rgb) / 0.42);
+  --mt-safe-lo: rgb(var(--m-safe-rgb) / 0.6);
+  --mt-warn: rgb(var(--m-warn-rgb) / 0.85);
+  --mt-hot: rgb(var(--m-hot-rgb) / 0.95);
+  --mt-clip: rgb(var(--m-clip-rgb) / 0.98);
+
+  /* loudness strip */
+  --lu-track: rgba(255, 255, 255, 0.045);
+  --lu-safe: rgb(var(--m-safe-rgb) / 0.5);
+  --lu-warn: rgb(var(--m-warn-rgb) / 0.72);
+  --lu-hot: rgb(var(--m-hot-rgb) / 0.85);
+  --lu-clip: rgb(var(--m-clip-rgb) / 0.9);
+  --lu-target: rgb(var(--accent-rgb) / 0.4);
+  --lu-target-label: rgb(var(--accent-rgb) / 0.5);
+  --lu-short: rgb(var(--deck-b-rgb) / 0.95);
+  --lu-int: var(--accent);
+
+  /* correlation */
+  --corr-track: rgba(255, 255, 255, 0.05);
+  --corr-neg: rgb(var(--m-clip-rgb) / 0.75);
+  --corr-mid: rgba(255, 255, 255, 0.2);
+  --corr-pos: rgb(var(--m-safe-rgb) / 0.8);
+  --corr-centre: rgba(255, 255, 255, 0.22);
+  --corr-needle-neg: var(--m-hot);
+  --corr-needle-pos: var(--accent);
+
+  /* EQ curve (a separate webview, the same sheet and the same tokens) */
+  --eq-grid-minor: rgba(255, 255, 255, 0.028);
+  --eq-grid-major: rgba(255, 255, 255, 0.06);
+  --eq-grid-zero: rgba(255, 255, 255, 0.12);
+  --eq-freq-label: rgba(255, 255, 255, 0.26);
+  --eq-db-label: rgba(255, 255, 255, 0.2);
+  --eq-spec-top: rgb(var(--accent-rgb) / 0.085);
+  --eq-spec-bottom: rgb(var(--accent-deep-rgb) / 0.035);
+  --eq-spec-edge: rgb(var(--accent-rgb) / 0.12);
+  --eq-spec-peak: rgb(var(--accent-rgb) / 0.07);
+  --eq-band: rgb(var(--accent-rgb) / 0.16);
+  --eq-band-hot: rgb(var(--accent-rgb) / 0.42);
+  --eq-curve: rgb(var(--accent-rgb) / 0.95);
+  --eq-curve-off: rgba(255, 255, 255, 0.2);
+  --eq-fill-top: rgb(var(--accent-rgb) / 0.1);
+  --eq-fill-bottom: rgb(var(--accent-rgb) / 0.03);
+  --eq-fill-off-top: rgba(255, 255, 255, 0.02);
+  --eq-fill-off-bottom: rgba(255, 255, 255, 0.01);
+  --eq-node-glow: rgb(var(--accent-rgb) / 0.22);
+  --eq-node-fill: rgba(12, 12, 15, 0.9);
+  --eq-node-fill-off: rgba(12, 12, 15, 0.75);
+  --eq-node-ring: rgb(var(--accent-rgb) / 0.95);
+  --eq-node-ring-off: rgba(255, 255, 255, 0.28);
+  --eq-tip-line: rgb(var(--accent-rgb) / 0.24);
+  --solo-band: rgb(var(--m-hot-rgb) / 0.2);
+  --solo-line: rgb(var(--m-hot-rgb) / 0.85);
+  --solo-chip: rgb(var(--m-hot-rgb) / 0.92);
+  --solo-chip-ink: var(--m-hot-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT — alabaster and bronze (SPEC §14)
+
+   Designed, not inverted. Three decisions run through all of it:
+
+     · the paper is warm and never `#fff`. `--ink-900` is the alabaster the app
+       sits on, and the surfaces above it get *lighter*, the way paper stacks;
+     · ink is a warm near-black (`34 28 18`), never pure black, and its washes
+       sit lower than a naive mirror of dark's: ink on paper carries further
+       than white on obsidian;
+     · canvas gets *more* ink, not less. Bars, meters and the EQ curve read
+       against a bright field, so every alpha in the canvas group is raised and
+       the additive blends become multiplies. Left at dark's values the
+       waveform is a pale wash — the fastest way to make a light theme look
+       cheap.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* ── surfaces: warm paper, stacking upwards ───────────────────────────── */
+  --ink-900: #efebe1;
+  --ink-850: #f3f0e8;
+  --ink-800: #f7f4ed;
+  --ink-700: #fbfaf5;
+
+  --surface-panel: rgba(252, 250, 245, 0.97);
+  --surface-menu: rgba(253, 251, 247, 0.98);
+  --surface-toast: rgba(253, 251, 247, 0.97);
+  --surface-badge: rgba(253, 251, 247, 0.94);
+  --surface-card: rgba(250, 248, 242, 0.99);
+  /* a scrim on paper closes the room down instead of opening it up: warm, and
+     dark enough that the card above it is unmistakably in front */
+  --scrim: rgba(52, 44, 30, 0.44);
+  --scrim-drop: rgba(52, 44, 30, 0.34);
+
+  --stage-glow-a: rgb(var(--accent-rgb) / 0.07);
+  --stage-glow-b: rgb(var(--deck-b-rgb) / 0.05);
+  --bg-app:
+    radial-gradient(1200px 620px at 18% -12%, var(--stage-glow-a), transparent 62%),
+    radial-gradient(900px 520px at 105% 8%, var(--stage-glow-b), transparent 60%), var(--ink-900);
+  --bg-eq:
+    radial-gradient(900px 480px at 12% -18%, rgb(var(--accent-rgb) / 0.07), transparent 62%),
+    radial-gradient(700px 420px at 108% 12%, rgb(var(--deck-b-rgb) / 0.05), transparent 60%),
+    var(--ink-900);
+  /* light still comes from above, so the sheen stays white; the shade at the
+     bottom becomes warm ink rather than black */
+  --bg-titlebar: linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent);
+  --bg-stage: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(78, 62, 34, 0.045));
+  --bg-transport: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(78, 62, 34, 0.05)),
+    var(--ink-850);
+  --bg-rail: linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent);
+
+  --well: rgba(78, 62, 34, 0.07);
+  --well-deep: rgba(78, 62, 34, 0.085);
+  /* A canvas plate on paper is not a hole in the desk — paper stacks upwards, so
+     the graph sits on a whiter sheet than the page and is held by the hairline
+     around it. Shading it down instead (dark's move) reads as a smudge. */
+  --well-canvas: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.34));
+
+  /* ── hairlines: warm, and heavier than dark's ─────────────────────────── */
+  --hairline: rgba(60, 50, 30, 0.13);
+  --hairline-strong: rgba(60, 50, 30, 0.22);
+  --hairline-soft: rgba(60, 50, 30, 0.08);
+
+  /* ── overlay fills ────────────────────────────────────────────────────── */
+  --fill-row: rgba(78, 62, 34, 0.045);
+  --fill-ghost: rgba(78, 62, 34, 0.05);
+  --fill-quiet: rgba(78, 62, 34, 0.055);
+  --fill-input: rgba(78, 62, 34, 0.06);
+  --fill-sunken: rgba(78, 62, 34, 0.07);
+  --fill-hover: rgba(78, 62, 34, 0.08);
+  --fill-menu: rgba(78, 62, 34, 0.085);
+  --fill-hover-hi: rgba(78, 62, 34, 0.1);
+  --fill-track: rgba(78, 62, 34, 0.12);
+  --masked-stripe: rgba(78, 62, 34, 0.05);
+
+  /* ── text: warm near-black ────────────────────────────────────────────── */
+  --text-hi: rgba(34, 28, 18, 0.94);
+  --text-mid: rgba(34, 28, 18, 0.68);
+  --text-lo: rgba(34, 28, 18, 0.48);
+  --text-faint: rgba(34, 28, 18, 0.32);
+
+  /* ── accent: bronze / aged brass ────────────────────────────────────────
+     The same hex from settings, a different ramp: on paper the accent darkens
+     to carry contrast and keeps its chroma. The values below are what the
+     default `#c9a227` derives to (see LIGHT_STEPS in theme.ts). */
+  --accent: #9c740f;
+  --accent-rgb: 156 116 15;
+  --accent-hi: #886300;
+  --accent-hi-rgb: 136 99 0;
+  --accent-press: #765506;
+  --accent-deep: #684902;
+  --accent-deep-rgb: 104 73 2;
+  --ink-on-accent-dark: #241c0c;
+  --ink-on-accent-light: #fbf8f1;
+  --accent-ink: var(--ink-on-accent-light);
+  --gold: var(--accent-deep);
+  --gold-2: var(--accent);
+  --selection: rgb(var(--accent-rgb) / 0.2);
+
+  /* ── decks: bronze and deep steel ─────────────────────────────────────── */
+  --deck-a: var(--accent);
+  --deck-b-src: #2e6c80;
+  --deck-b: #2e6c80;
+  --deck-b-rgb: 46 108 128;
+  --deck-b-ink: #f2f7f9;
+
+  /* ── meter scale: the same four stops, taken down to read on paper ──────
+     Dark's safe stop is a pale sage; the naive light counterpart is a saturated
+     emerald, which is the one loud colour in an otherwise quiet room. Deeper and
+     greyer instead — a eucalyptus that sits at the same distance from the page
+     as the sage sits from obsidian. */
+  --m-safe: #2c7a5b;
+  --m-safe-rgb: 44 122 91;
+  --m-warn: #b2801a;
+  --m-warn-rgb: 178 128 26;
+  --m-hot: #bc5227;
+  --m-hot-rgb: 188 82 39;
+  --m-clip: #ab2418;
+  --m-clip-rgb: 171 36 24;
+  --m-clip-hi: #7c1109;
+  --m-hot-ink: #fff6f1;
+
+  --winctl-close: #c42b1c;
+  --winctl-close-ink: #ffffff;
+
+  /* Paper does not cast a 60 px black shadow: one short, warm, tight one. */
+  --shadow-float: 0 18px 40px rgba(62, 50, 28, 0.16), 0 1px 3px rgba(62, 50, 28, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='rgba(34,28,18,0.5)' stroke-width='1.2'/></svg>");
+
+  /* ── canvas ─────────────────────────────────────────────────────────────
+     The real work of the light theme: every alpha higher than its dark
+     counterpart, the unplayed scrim lightening instead of darkening, and both
+     additive blends turned into multiplies — `lighter` on paper is a fog
+     machine. */
+  --wf-outer-a: 0.7;
+  --wf-core-a: 1;
+  --wf-cap-a: 0.55;
+  --wf-glow-a: 0.1;
+  --wf-decode-a: 0.55;
+  --wf-playhead-a: 1;
+  --wf-blend: multiply;
+  --wf-mid: rgba(60, 50, 30, 0.16);
+  --wf-skeleton: rgba(60, 50, 30, 0.11);
+  /* Paper, not ink: the un-played half of a lane fades towards the page rather
+     than into shadow. Thinner than dark's scrim on purpose — dark can wash 66 %
+     of a near-white bar away and still leave it legible against obsidian, while
+     the same wash on paper takes a bronze bar to within 15/255 of the page and
+     the lane goes to mist. 0.44 keeps ~40/255 of separation, which is where the
+     played and un-played halves read as two states of the same drawing. */
+  --wf-scrim: rgba(243, 240, 232, 0.44);
+  --wf-gap-fill: rgba(60, 50, 30, 0.04);
+  --wf-gap-line: rgba(60, 50, 30, 0.28);
+  --wf-gap-text: rgba(34, 28, 18, 0.45);
+  --wf-hover-line: rgba(34, 28, 18, 0.38);
+  --wf-playhead-idle: rgba(34, 28, 18, 0.45);
+
+  /* Which ink a lane is drawn in. Deck A's mid-tone bronze is the DOM's accent —
+     right next to text, on small fills — but as 3 px of bar under a scrim it
+     lands only 118/255 from the paper, where obsidian gives its champagne 203.
+     So the canvas takes the *deep* end of the family, which is what
+     `--accent-deep` is for, and the lane colour is a token of its own rather
+     than the deck colour. Deck B needs no such help: its steel is already dark
+     against paper (139/255), the same share of A's weight that it has in dark. */
+  --lane-a-rgb: var(--accent-deep-rgb);
+  --lane-b-rgb: var(--deck-b-rgb);
+  --lane-masked-rgb: 104 96 82;
+  /* Dark can drop the idle lane to half strength and have it read as *behind*
+     the audible one. On paper the same ratio reads as a lane someone forgot to
+     finish, so it recedes less and relies on the audible lane's own density for
+     the distinction. */
+  --lane-idle-o: 0.66;
+
+  --loop-fill: rgb(var(--accent-deep-rgb) / 0.14);
+  --loop-edge: rgb(var(--accent-rgb) / 0.7);
+  --loop-grip: rgb(var(--accent-rgb) / 1);
+  --align-chip: rgb(var(--deck-b-rgb) / 1);
+  --align-chip-ink: var(--deck-b-ink);
+  --align-line: rgb(var(--deck-b-rgb) / 0.9);
+
+  --tip-bg: rgba(255, 253, 248, 0.96);
+  --tip-line: rgba(60, 50, 30, 0.22);
+  --tip-text: rgba(34, 28, 18, 0.94);
+
+  --mt-track: rgba(60, 50, 30, 0.08);
+  --mt-grid: rgba(60, 50, 30, 0.1);
+  --mt-grid-zero: rgba(60, 50, 30, 0.24);
+  --mt-label: rgba(34, 28, 18, 0.44);
+  --mt-label-zero: rgba(34, 28, 18, 0.62);
+  /* the RMS body still has to read as denser than the peak fill, which on
+     paper means darker rather than lighter */
+  --mt-rms: rgba(34, 28, 18, 0.2);
+  --mt-chan: rgba(34, 28, 18, 0.5);
+  --mt-safe: rgb(var(--m-safe-rgb) / 0.66);
+  --mt-safe-lo: rgb(var(--m-safe-rgb) / 0.82);
+  --mt-warn: rgb(var(--m-warn-rgb) / 0.92);
+  --mt-hot: rgb(var(--m-hot-rgb) / 0.96);
+  --mt-clip: rgb(var(--m-clip-rgb) / 1);
+
+  --lu-track: rgba(60, 50, 30, 0.09);
+  --lu-safe: rgb(var(--m-safe-rgb) / 0.72);
+  --lu-warn: rgb(var(--m-warn-rgb) / 0.86);
+  --lu-hot: rgb(var(--m-hot-rgb) / 0.92);
+  --lu-clip: rgb(var(--m-clip-rgb) / 0.96);
+  --lu-target: rgb(var(--accent-rgb) / 0.6);
+  --lu-target-label: rgb(var(--accent-rgb) / 0.8);
+  --lu-short: rgb(var(--deck-b-rgb) / 1);
+  --lu-int: var(--accent);
+
+  --corr-track: rgba(60, 50, 30, 0.1);
+  --corr-neg: rgb(var(--m-clip-rgb) / 0.82);
+  --corr-mid: rgba(34, 28, 18, 0.24);
+  --corr-pos: rgb(var(--m-safe-rgb) / 0.85);
+  --corr-centre: rgba(34, 28, 18, 0.3);
+  --corr-needle-neg: var(--m-hot);
+  --corr-needle-pos: var(--accent);
+
+  --eq-grid-minor: rgba(60, 50, 30, 0.08);
+  --eq-grid-major: rgba(60, 50, 30, 0.15);
+  --eq-grid-zero: rgba(60, 50, 30, 0.28);
+  --eq-freq-label: rgba(34, 28, 18, 0.5);
+  --eq-db-label: rgba(34, 28, 18, 0.4);
+  /* The analyser is the room the curve stands in, and on paper it cannot be a
+     paler bronze: three tints of one hue at three alphas turn the graph into a
+     beige slab where nothing is the subject. So the spectrum goes *cool* —
+     graphite, the ink a draughtsman would shade with — and the bronze is left
+     to the thing the user is editing. Still quieter than the per-band curves,
+     which stay quieter than the composite. */
+  --eq-spec-top: rgba(56, 60, 60, 0.17);
+  --eq-spec-bottom: rgba(56, 60, 60, 0.05);
+  --eq-spec-edge: rgba(56, 60, 60, 0.34);
+  --eq-spec-peak: rgba(56, 60, 60, 0.2);
+  --eq-band: rgb(var(--accent-rgb) / 0.34);
+  --eq-band-hot: rgb(var(--accent-rgb) / 0.7);
+  --eq-curve: rgb(var(--accent-rgb) / 1);
+  --eq-curve-off: rgba(34, 28, 18, 0.3);
+  /* the curve's own fill stays a wash: it is there to say which side of unity
+     the band is on, and any heavier it competes with the analyser behind it */
+  --eq-fill-top: rgb(var(--accent-rgb) / 0.11);
+  --eq-fill-bottom: rgb(var(--accent-rgb) / 0.035);
+  --eq-fill-off-top: rgba(34, 28, 18, 0.05);
+  --eq-fill-off-bottom: rgba(34, 28, 18, 0.02);
+  --eq-node-glow: rgb(var(--accent-rgb) / 0.26);
+  /* a node is a hole punched in the curve: on paper that hole is paper */
+  --eq-node-fill: rgba(255, 253, 248, 0.95);
+  --eq-node-fill-off: rgba(255, 253, 248, 0.8);
+  --eq-node-ring: rgb(var(--accent-rgb) / 1);
+  --eq-node-ring-off: rgba(34, 28, 18, 0.34);
+  --eq-tip-line: rgb(var(--accent-rgb) / 0.4);
+  --solo-band: rgb(var(--m-hot-rgb) / 0.22);
+  --solo-line: rgb(var(--m-hot-rgb) / 0.95);
+  --solo-chip: rgb(var(--m-hot-rgb) / 1);
+  --solo-chip-ink: var(--m-hot-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Fonts (§15)
+
+   Tokens, not families: `data-ui-font` / `data-num-font` select a stack made
+   only of faces the platform ships, so nothing is fetched and nothing silently
+   falls back to Times. An unknown value keeps the default stack. Every numeric
+   option is monospaced — the read-outs are tabular and must stay
+   column-stable.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root[data-ui-font="grotesk"] {
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+}
+:root[data-ui-font="humanist"] {
+  --font-ui: "Avenir Next", Avenir, Corbel, "Segoe UI", "Gill Sans", sans-serif;
+}
+:root[data-ui-font="neutral"] {
+  --font-ui: Inter, Roboto, "Noto Sans", "Segoe UI", "DejaVu Sans", sans-serif;
+}
+
+:root[data-num-font="sf-mono"] {
+  --font-num: "SF Mono", SFMono-Regular, ui-monospace, monospace;
+}
+:root[data-num-font="menlo"] {
+  --font-num: Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+}
+:root[data-num-font="consolas"] {
+  --font-num: Consolas, "Lucida Console", "DejaVu Sans Mono", monospace;
+}
+:root[data-num-font="courier"] {
+  --font-num: "Courier New", Courier, "Nimbus Mono PS", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base
+   ═════════════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ink-900);
+  color: var(--text-hi);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+/* thin, near-invisible scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fill-hover-hi);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fill-track);
+  background-clip: content-box;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ── focus ─────────────────────────────────────────────────────────────────
+   Onyx is driven from the keyboard, so a keyboard focus ring must be loud
+   enough to find on an obsidian background — the UA ring here computes to
+   `auto 1px rgb(16,16,16)`, which is either invisible or, once Chromium
+   decides to paint it, a stark white rectangle nothing else in the app owns.
+   One accent hairline ring instead, on `:focus-visible` only.
+
+   `:focus` without `:focus-visible` gets nothing: a control clicked with the
+   mouse must not read as engaged afterwards. `lib/focus.ts` also drops DOM
+   focus after a pointer click, so a later `Space` cannot resurrect a ring on
+   a button the user has long since finished with. */
+:focus-visible {
+  outline: 1px solid rgb(var(--accent-rgb) / 0.9);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── shared primitives ─────────────────────────────────────────────────── */
+
+.label {
+  font-size: 10px;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-lo);
+  font-weight: 500;
+}
+
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--ls-num);
+}
+
+.dot {
+  color: var(--text-faint);
+  padding: 0 6px;
+}

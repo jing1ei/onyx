@@ -1,0 +1,337 @@
+/**
+ * Settings surface — SPEC §15 (appearance), §15 (engine source), §17 (the
+ * General MIDI bank), on top of the existing loudness-cache block (SPEC §8).
+ *
+ * Everything the panel adds lives here. `tokens.css`, `app.css` and `eq.css`
+ * belong to the theming work and are not touched by this file; the rules below
+ * only reuse tokens (`--text-mid`, `--hairline`, `--accent-rgb`, …) and never
+ * name a colour, so a new accent or the light theme re-skins this panel for
+ * free.
+ *
+ * The panel is one narrow column of titled blocks. The visual grammar is
+ * already set by `.field` in `app.css` — label left, control right, hairline
+ * between rows — and the job here is to let a block *contain* rows without
+ * introducing a second kind of card: a block is a small caps title plus its
+ * rows, separated by a heavier hairline than the one between rows.
+ */
+
+/* ── the panel itself ─────────────────────────────────────────────────────
+   Wider than the 320 px default because the engine-source rows carry a label,
+   a sub-line and a select, and 320 px squeezed the selects to the point where
+   "Follow source" elided. It is also now tall enough to need scrolling, which
+   is capped against the *zoomed* viewport: `zoom` on <html> does not divide
+   viewport units, so `100vh` is unzoomed px and a panel sized from it would
+   overhang the window at the `large` size scale. `--zoom` is published by
+   `theme.ts` for exactly this. */
+
+.float-panel.settings {
+  width: min(360px, calc(100vw / var(--zoom, 1) - 20px));
+  max-height: calc(100vh / var(--zoom, 1) - var(--titlebar-h) - 22px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* room for the scrollbar so the hairlines do not shift when it appears */
+  padding-right: 14px;
+}
+
+/* One rail for every control, so the labels on the left all break at the same
+   place and the panel reads as two columns rather than as a ragged list. A
+   select left to its own intrinsic width grows with its longest option — one
+   long device name and the "Output device" label opposite it wrapped. */
+.float-panel.settings .select {
+  flex: none;
+  width: 186px;
+  min-width: 0;
+}
+
+/* ── a block ──────────────────────────────────────────────────────────── */
+
+.set-sec + .set-sec {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.set-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 21px;
+  margin-bottom: 2px;
+}
+.set-sec-head .spacer {
+  flex: 1;
+}
+.set-sec-title {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+
+/* "modified" next to the Appearance title: the one thing that has to be
+   visible without reading is *whether these settings still are the defaults*,
+   so it is an accent chip, and the neutral variant (`quiet`) is for chips that
+   only report state. */
+.set-chip {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.3);
+}
+.set-chip.quiet {
+  color: var(--text-faint);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* A row whose control does not fit on the label's line — a swatch strip, a
+   sample, a bank name and its buttons. It keeps the hairline rhythm of
+   `.field` and stacks instead of pushing the control off the edge. */
+.field.col {
+  display: block;
+}
+.set-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.set-row .k {
+  font-size: 11px;
+  color: var(--text-mid);
+}
+.set-row .sub {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  max-width: 210px;
+}
+
+/* The two faces of Appearance (SPEC §20). A full-width segmented control
+   rather than underlined tabs: this panel already speaks in `.seg`, and the
+   pair reads as one choice instead of two links. */
+.set-tabs {
+  display: flex;
+  width: 100%;
+  margin: 6px 0 2px;
+}
+.set-tabs button {
+  flex: 1;
+  letter-spacing: 0.1em;
+}
+
+.set-note {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+/* `.cache-actions` in app.css gives its hint the free space; the note plays
+   the same part here. */
+.cache-actions .set-note {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* Rejection has to be *seen*, not silently corrected: the field turns hot and
+   the reason is printed underneath, and the accent on screen does not move
+   until the value parses. */
+.set-error {
+  margin-top: 6px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--m-hot);
+}
+
+/* ── accent (§15) ─────────────────────────────────────────────────────── */
+
+.set-swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.set-swatch {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35), 0 0 0 1px var(--hairline);
+  transition: transform var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease);
+}
+.set-swatch:hover {
+  transform: scale(1.08);
+}
+/* The selected ring is drawn in the *text* colour rather than the accent: the
+   ring sits directly against the swatch it marks, and an accent ring around
+   the accent swatch is invisible. */
+.set-swatch[data-on="true"] {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35), 0 0 0 1px var(--surface-panel),
+    0 0 0 2px var(--text-mid);
+}
+/* the big one in the row head is a read-out, not a target */
+.set-swatch.big {
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
+}
+
+.set-hex {
+  /* `appearance` and `border`: an <input> is not covered by the reset the way
+     a <button> is, and the UA border printed a white rectangle around the
+     field on the dark theme. */
+  appearance: none;
+  border: 0;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-control);
+  background: var(--fill-input);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-hi);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.set-hex:focus {
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.4);
+}
+.set-hex[data-bad="true"],
+.set-hex[data-bad="true"]:focus {
+  color: var(--m-hot);
+  box-shadow: inset 0 0 0 1px rgb(var(--m-clip-rgb) / 0.55);
+}
+
+/* ── the numeric-font sample (§15) ────────────────────────────────────── */
+
+/* Why the restriction to monospaced faces is enforced rather than suggested:
+   these two rows carry different digits and must still line up column for
+   column, the way the LUFS, timecode and dB read-outs elsewhere in the app do.
+   `1fr 1fr 1fr` and `tabular-nums` make a proportional face fail visibly here
+   — which is the point of showing it. */
+.set-sample {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px 10px;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border-radius: var(--r-control);
+  background: var(--fill-sunken);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-lo);
+}
+.set-sample + .set-sample {
+  margin-top: 3px;
+}
+.set-sample span:nth-child(2),
+.set-sample span:nth-child(3) {
+  text-align: right;
+}
+
+/* ── the General MIDI bank (§18) ──────────────────────────────────────── */
+
+.set-bank {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+}
+.set-bank-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--text-mid);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── the MIDI badge in the title bar (§18) ────────────────────────────── */
+
+/* It is a button, but it must not *look* like a control sitting in the middle
+   of the title line: same type as the badge next to it, with the affordance
+   held back until the pointer is on it. */
+.tb-badge.as-link {
+  color: var(--text-mid);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  transition: color var(--t-hover) var(--ease), background var(--t-hover) var(--ease);
+}
+.tb-badge.as-link:hover {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+/* ── playlist marks (§18/§19) ─────────────────────────────────────────────
+   Two marks live in the playlist rather than in the panel, but they are part
+   of the same v3 work and share its vocabulary, so they are styled here rather
+   than in `app.css`, which the theming work owns.
+
+   Both are *quiet*: a row is read as title-then-artist and these must not
+   compete with the title. Hence a hairline outline and faint text, no fill —
+   the loud states in a row (playing, deck, missing) stay the loud ones. */
+
+.pl-tag {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-style: normal;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-faint);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+/* The archive name is a file name, so it keeps its own case and can be long
+   enough to need a cap; the title is what the row is for. */
+.pl-tag.arc {
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 9px;
+}
+.pl-head .pl-tag.arc {
+  max-width: 168px;
+}
+.pl-row[data-playing="true"] .pl-tag {
+  color: var(--text-lo);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+/* A narrow window drops the artist column and the title has the row to itself,
+   but the marks still have to give way to the title before it elides. */
+@media (max-width: 599px) {
+  .pl-tag.arc {
+    max-width: 96px;
+  }
+}
+
+/* ── the narrow window ────────────────────────────────────────────────── */
+
+@media (max-width: 479px) {
+  /* `app.css` lets a panel take the window at this width, and the settings
+     panel has to follow it rather than sit in the middle at 360 px — but
+     through `--zoom`, because `100vw` is unzoomed. The sub-line cap goes with
+     it, or it holds the column open. */
+  .float-panel.settings {
+    width: calc(100vw / var(--zoom, 1) - 20px);
+  }
+  .set-row .sub {
+    max-width: none;
+  }
+  .select {
+    min-width: 148px;
+  }
+}

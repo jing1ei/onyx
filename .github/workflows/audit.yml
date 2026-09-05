@@ -1,0 +1,50 @@
+# `cargo audit` against the RustSec advisory database.
+#
+# The README's "Security posture" records a run that found 0 vulnerabilities and
+# 17 warnings, and says plainly that it predates the v3 dependencies and could
+# not be repeated in the environment this app was written in — that sandbox
+# could not reach the advisory database. This workflow is how that stops being
+# a note in prose: it runs weekly, on any change to a lockfile, and on demand.
+#
+# It fails on a *vulnerability*, not on a warning. Most of the warnings are
+# `unmaintained` crates reachable only through Tauri's Linux backend, which is
+# not a shipping target; the rest are the `unic-*` Unicode tables, which cannot
+# be dropped from this tree before Tauri drops them.
+name: Audit
+
+on:
+  push:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "**/Cargo.toml"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "**/Cargo.toml"
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-audit
+      - name: cargo audit
+        run: cargo audit
+      - name: cargo audit — the warnings, for the record
+        if: always()
+        run: cargo audit --json > audit.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-audit-report
+          path: audit.json
+          if-no-files-found: warn
+          retention-days: 30

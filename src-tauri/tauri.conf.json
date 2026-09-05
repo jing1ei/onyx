@@ -1,0 +1,129 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Onyx",
+  "version": "1.0.0",
+  "identifier": "com.onyxaudio.player",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Onyx",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 420,
+        "minHeight": 560,
+        "resizable": true,
+        "center": true,
+        "decorations": false,
+        "transparent": false,
+        "backgroundColor": "#0A0A0C",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": true,
+        "acceptFirstMouse": true,
+        "visible": true,
+        "focus": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; child-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 ws://localhost:1421 http://localhost:1420; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'",
+      "freezePrototype": true,
+      "assetProtocol": {
+        "enable": false,
+        "scope": []
+      }
+    },
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "deb"],
+    "category": "Music",
+    "shortDescription": "Professional audio playback and A/B comparison",
+    "longDescription": "Onyx is a fast, accurate audio player for critical listening: bit-transparent playback that follows the source sample rate, two decks sharing one playhead for instant A/B comparison, LUFS-based level matching, blind testing and standards-compliant BS.1770-4 / EBU R128 metering.",
+    "copyright": "Copyright © 2026 Onyx Audio",
+    "licenseFile": "../LICENSE",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "wav",
+          "wave",
+          "bwf",
+          "flac",
+          "mp3",
+          "m4a",
+          "aiff",
+          "aif",
+          "aifc",
+          "ogg",
+          "oga",
+          "opus",
+          "caf",
+          "mka",
+          "aac",
+          "alac",
+          "mp4",
+          "mov"
+        ],
+        "name": "Audio File",
+        "description": "Audio file — play and A/B compare in Onyx",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "audio/wav;audio/flac;audio/mpeg;audio/mp4;audio/aiff;audio/ogg;audio/opus;audio/x-caf;audio/x-matroska;audio/aac;video/mp4;video/quicktime"
+      },
+      {
+        "ext": ["mid", "midi"],
+        "name": "MIDI File",
+        "description": "General MIDI file — rendered through a SoundFont in Onyx",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "audio/midi;audio/x-midi"
+      },
+      {
+        "ext": ["zip"],
+        "name": "Audio Archive",
+        "description": "Zip archive — Onyx plays the audio inside it",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "application/zip"
+      }
+    ],
+    "resources": {
+      "../crates/onyx-core/assets/gm/GeneralUser-GS-LICENSE.txt": "GeneralUser-GS-LICENSE.txt"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "appPosition": { "x": 180, "y": 200 },
+        "applicationFolderPosition": { "x": 480, "y": 200 },
+        "windowSize": { "width": 660, "height": 420 }
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libasound2"]
+      }
+    }
+  }
+}

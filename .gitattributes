@@ -1,0 +1,44 @@
+# Line endings.
+#
+# Every check in `npm run build` reads the tree as text: check-version.mjs
+# matches `name = "onyx"\nversion = "…"` in Cargo.lock, check-ipc.mjs and
+# check-theme.mjs split sources on "\n", check-ab-parity.mjs matches multi-line
+# patterns with a literal \n in them. On a Windows checkout with Git's default
+# core.autocrlf=true every one of those sees \r\n and fails — which is exactly
+# what broke the Windows half of the v1.0.0 release build, before cargo was
+# ever reached.
+#
+# Normalise to LF in the repository *and* in the working tree on every
+# platform. Rust, Node, Vite and MSVC are all happy with LF on Windows.
+* text=auto eol=lf
+
+# Windows-only scripts that are executed by their host shell.
+*.ps1 text eol=crlf
+
+# Binary — never touched, never diffed as text.
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.sf2   binary
+*.wav   binary
+*.aiff  binary
+*.aif   binary
+*.caf   binary
+*.flac  binary
+*.mp3   binary
+*.m4a   binary
+*.ogg   binary
+*.opus  binary
+*.mka   binary
+*.mp4   binary
+*.mov   binary
+*.webm  binary
+
+# Generated / vendored: keep them out of diffs and language stats.
+package-lock.json  -diff linguist-generated
+Cargo.lock         -diff linguist-generated
+
+# Vendored third-party licence text, bundled into the app as a resource. It is
+# stored with CRLF exactly as its author shipped it; `-text` keeps it that way
+# rather than letting the rule above renormalise someone else's document.
+crates/onyx-core/assets/gm/GeneralUser-GS-LICENSE.txt -text

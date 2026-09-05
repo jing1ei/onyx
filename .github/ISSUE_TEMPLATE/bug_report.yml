@@ -1,0 +1,70 @@
+name: Bug report
+description: Something Onyx does that it should not, or does not do that it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: the README's **Known limitations** section lists what is
+        unverified or deliberately not supported (whole files are decoded into
+        RAM, alignment is offset-only, no gapless across playlist rows, no
+        library). If what you hit is in that list it is already known.
+
+        For anything about *what you heard*, the diagnostics matter more than
+        the description — see "Logs" in the README.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: material
+    attributes:
+      label: The files involved
+      description: >
+        Format, sample rate, bit depth, channel count and rough length of the
+        material — e.g. "24-bit/96 kHz WAV, 4:12, stereo" and, for an A/B, both
+        sides. Do not attach copyrighted audio; a description is usually enough,
+        and a short generated tone that reproduces it is ideal.
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Onyx version
+      placeholder: "1.0.0 (or the commit you built)"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Platform
+      options:
+        - macOS (Apple silicon)
+        - macOS (Intel)
+        - Windows 11
+        - Windows 10
+        - Linux (development build)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Output device, host and rate
+      description: From Settings → Engine source — the host, the device, the rate it settled on and the buffer size.
+      placeholder: "CoreAudio · Scarlett 2i2 · 96 kHz · 512"
+    validations:
+      required: false
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: >
+        macOS `~/Library/Logs/com.onyxaudio.player/onyx.log`,
+        Windows `%LOCALAPPDATA%\com.onyxaudio.player\logs\onyx.log`.
+        The last few dozen lines around the problem are more useful than the whole file.
+      render: text
+    validations:
+      required: false

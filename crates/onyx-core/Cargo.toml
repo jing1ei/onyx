@@ -1,0 +1,71 @@
+[package]
+name = "onyx-core"
+description = "Real-time audio playback, A/B comparison and metering engine for Onyx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+parking_lot = { workspace = true }
+crossbeam-channel = { workspace = true }
+crossbeam-queue = { workspace = true }
+rtrb = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+rustfft = { workspace = true }
+rubato = { workspace = true }
+cpal = { workspace = true }
+
+# SPEC §18. Pure-Rust SoundFont synthesiser (MIT). MIDI is *rendered* to PCM
+# on the decode thread and then travels the ordinary decoded-audio path, so
+# nothing downstream of `decode` knows MIDI exists.
+rustysynth = "1.3"
+
+# SPEC §17. Symphonia 0.5 demuxes Ogg/Opus but ships no Opus *decoder*, so
+# the codec comes from here. Pure Rust, no FFI, MIT OR Apache-2.0 — the same
+# "no C toolchain to build Onyx" property the rest of the dependency set has.
+opus-decoder = "0.1"
+
+# SPEC §17: every format we promise is named here rather than inherited from
+# a default feature set, so a Symphonia release that changes its defaults cannot
+# silently drop a format Onyx claims to play.
+#
+#   wav/pcm/adpcm ..... WAV/PCM (and Microsoft/IMA ADPCM inside it)
+#   aiff, caf ......... the other two uncompressed containers we accept
+#   flac .............. FLAC, native and in Ogg
+#   mp1/mp2/mp3 ....... MPEG audio (a bare stream or inside a container)
+#   aac ............... AAC-LC, ADTS framed or in MP4
+#   alac .............. Apple Lossless, in MP4/CAF
+#   vorbis, ogg ....... Ogg Vorbis (and the Ogg carriage of Opus/FLAC)
+#   isomp4 ............ MP4/M4A **and** QuickTime MOV — audio track only
+#   mkv ............... Matroska/WebM — audio track only
+[dependencies.symphonia]
+version = "0.5"
+default-features = false
+features = [
+    "aac",
+    "adpcm",
+    "alac",
+    "flac",
+    "isomp4",
+    "mkv",
+    "mp1",
+    "mp2",
+    "mp3",
+    "ogg",
+    "pcm",
+    "vorbis",
+    "wav",
+    "aiff",
+    "caf",
+]
+
+[dev-dependencies]
+approx = "0.5"
+# Test-only. Already a workspace dependency (the Tauri shell uses it), so this
+# pulls in nothing new; it lets `tests/public_api.rs` pin the JSON wire format
+# of the types that cross the IPC boundary.
+serde_json = { workspace = true }

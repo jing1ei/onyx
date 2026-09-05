@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+
+# Build output — all of it is regenerable, none of it belongs in the repo.
+#   dist/       vite production bundle consumed by tauri.conf.json frontendDist
+#               (index.html + eq.html + theme.html, the three documents of §5)
+#   dist-mock/  vite bundle built with `--mode mock` (browser-only UI harness)
+#   dist-ssr/   never produced — Onyx has no SSR build; kept from the Vite
+#               template so a stray one could not be committed by accident
+#   target/     cargo workspace target dir (~12 GB with the Tauri deps)
+#   artifacts/  release binaries / installers copied out of target/
+#   shots/      screenshots written by `npm run shots`, `shots:theme` and
+#               `shots:themedoc`, including the frozen before/after frames the
+#               `--tag` run leaves in shots/diff/
+#   .tmp/       scratch dir for local probe scripts / throwaway captures
+/dist
+/dist-ssr
+/dist-mock
+/target
+/artifacts
+/shots
+/.tmp
+*.local
+
+# TypeScript's incremental state, if anyone runs `tsc -b` (tsconfig.node.json is
+# a composite project). `npm run typecheck` is --noEmit and writes none.
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# The local double-click release launcher. It force-pushes and tags, which is a
+# thing you do to your own checkout, not something the repository should carry.
+/ship.command
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

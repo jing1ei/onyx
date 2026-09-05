@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- both themes are designed (SPEC §14); the resolved one is set on
+         <html> by src/lib/theme.ts and `tokens.css` states `color-scheme` per
+         theme, so the UA default only ever shows before the first paint -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- inline so there is no /favicon.ico round-trip and no stray asset in public/ -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='none' stroke='%23e8d9a0' stroke-width='1.6'/%3E%3C/svg%3E"
+    />
+    <title>Onyx</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

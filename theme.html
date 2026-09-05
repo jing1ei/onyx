@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- both themes are designed (SPEC §14); the resolved one is set on
+         <html> by src/lib/theme.ts -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The theme editor (SPEC §20), the third document in the same bundle.
+
+      It deliberately does *not* apply the theme document being edited: this is
+      the window you use when a pasted theme has made the other windows
+      unreadable, so it renders in Onyx's own designed appearance whatever the
+      document says. See src/theme/main.tsx.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Cpath d='M9 10h14M9 16h9M9 22h12' fill='none' stroke='%23e8d9a0' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <title>Onyx — Theme</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/theme/main.tsx"></script>
+  </body>
+</html>

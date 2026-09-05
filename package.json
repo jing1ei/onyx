@@ -1,0 +1,41 @@
+{
+  "name": "onyx",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:mock": "vite --mode mock",
+    "typecheck": "tsc --noEmit",
+    "check:eq": "node scripts/check-eq-curve.mjs",
+    "check:ab": "node scripts/check-ab-parity.mjs",
+    "check:theme": "node scripts/check-theme.mjs",
+    "check:ipc": "node scripts/check-ipc.mjs",
+    "check:version": "node scripts/check-version.mjs",
+    "build": "tsc --noEmit && npm run check:version && npm run check:ipc && npm run check:eq && npm run check:ab && npm run check:theme && vite build",
+    "build:mock": "tsc --noEmit && npm run check:version && npm run check:ipc && npm run check:eq && npm run check:ab && npm run check:theme && vite build --mode mock --outDir dist-mock",
+    "preview": "vite preview",
+    "shots": "node scripts/shots.mjs",
+    "shots:theme": "node scripts/shots-theme.mjs",
+    "shots:themedoc": "node scripts/shots-themedoc.mjs",
+    "tauri": "tauri"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "playwright": "^1.62.1",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}
