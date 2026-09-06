@@ -22,7 +22,7 @@ thiserror = "2"
 log = "0.4"
 rustfft = "6"
 rubato = "0.16"
-cpal = "0.15"
+cpal = "0.18"
 
 [profile.release]
 opt-level = 3
