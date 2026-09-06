@@ -21,7 +21,7 @@ rtrb = "0.3"
 thiserror = "2"
 log = "0.4"
 rustfft = "6"
-rubato = "0.16"
+rubato = "5.0"
 cpal = "0.15"
 
 [profile.release]
