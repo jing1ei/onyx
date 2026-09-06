@@ -43,7 +43,7 @@ opus-decoder = "0.1"
 #   isomp4 ............ MP4/M4A **and** QuickTime MOV — audio track only
 #   mkv ............... Matroska/WebM — audio track only
 [dependencies.symphonia]
-version = "0.5"
+version = "0.6"
 default-features = false
 features = [
     "aac",
