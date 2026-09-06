@@ -66,7 +66,7 @@ jobs:
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
           echo "Building $tag."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.tag.outputs.tag }}
 
@@ -88,7 +88,7 @@ jobs:
         with:
           key: release-verify
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -120,7 +120,7 @@ jobs:
             rust-targets: ""
             args: --bundles nsis
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.tag }}
 
@@ -132,7 +132,7 @@ jobs:
         with:
           key: release-${{ matrix.os }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -143,7 +143,7 @@ jobs:
       # contract checks and tsc all run again inside the release build itself.
       # It creates the release on first use and uploads into the same one from
       # the second job.
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # All optional. Empty means "build unsigned", not "fail".
@@ -178,7 +178,7 @@ jobs:
 
       # Belt and braces: the same files on the workflow run itself, so a
       # failed or deleted draft release does not mean a 20-minute rebuild.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: onyx-${{ needs.verify.outputs.version }}-${{ matrix.os }}
           path: |
