@@ -496,6 +496,10 @@ fn load(state: &Arc<AppState>, deck: Deck, entry_id: u64, opts: LoadOpts) -> Res
         )
     };
 
+    let original_path = path.clone();
+    let canonical = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    let preview = state.editor_previews.lock().get(&canonical).cloned();
+    let path = preview.as_ref().map(|p| p.path.clone()).unwrap_or(path);
     let mut source_rate = cached_rate;
     if !resolved || source_rate == 0 {
         // The background probe has not reached this entry yet. A header parse is
@@ -563,7 +567,7 @@ fn load(state: &Arc<AppState>, deck: Deck, entry_id: u64, opts: LoadOpts) -> Res
         .map(|m| m.len())
         .unwrap_or(u64::MAX);
     let budget = crate::safe_decode::plausible_budget(state.budget_bytes(), file_bytes);
-    let handle =
+    let mut handle =
         match crate::safe_decode::open_with(&path, target_rate, budget, &state.decode_options()) {
             Ok(h) => h,
             Err(e) => {
@@ -577,6 +581,16 @@ fn load(state: &Arc<AppState>, deck: Deck, entry_id: u64, opts: LoadOpts) -> Res
                 return Err(message);
             }
         };
+    if preview.is_some() {
+        handle.info.path = original_path.to_string_lossy().into_owned();
+        handle.info.file_name = original_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+        handle.info.render_key = Some("onyx-editor-preview".into());
+        if let Some(entry) = state.playlist.lock().get_mut(entry_id) {
+            handle.info.title = entry.title.clone();
+            entry.duration_secs = handle.info.duration_secs;
+            entry.analysis = None;
+        }
+    }
     if handle.status.is_truncated() {
         let minutes = handle.pcm.capacity_frames() as f64 / target_rate.max(1) as f64 / 60.0;
         let budget_mib = budget / (1024 * 1024);
@@ -799,7 +813,7 @@ fn spawn_watcher(state: Arc<AppState>, deck: Deck, entry_id: u64, handle: Decode
                 }
                 // Only truncated-free decodes describe the whole file, and a
                 // partial measurement must never be cached as if it were.
-                if !handle.status.is_truncated() {
+                if !handle.status.is_truncated() && handle.info.render_key.as_deref() != Some("onyx-editor-preview") {
                     // SPEC §18: for a MIDI render the key carries the
                     // SoundFont's identity, so the measurement belongs to the
                     // bank it was made with. `stored_rate` — the rate this

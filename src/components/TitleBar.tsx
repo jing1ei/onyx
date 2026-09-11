@@ -1,4 +1,7 @@
+import { t } from "../lib/i18n";
 import { useAudibleDeck } from "../lib/audible";
+import { switchMode } from '../lib/documentMode';
+import { useLanguage, setLanguage } from '../lib/i18n';
 import { IS_MAC } from "../lib/dom";
 import { toggleEqWindow } from "../lib/eqwindow";
 import { useStore } from "../lib/store";
@@ -9,6 +12,12 @@ import { IconClose, IconEq, IconGear, IconKeys, IconMaximize, IconMinimize } fro
 import "../styles/settings.css";
 
 export default function TitleBar() {
+  const language = useLanguage();
+  const editorActive = useStore(s => s.editorActive);
+  const modeSwitching = useStore(s => s.modeSwitching);
+  const setEditorActive = (value: boolean) => { void switchMode(value); };
+  const editorPath = useStore(s => s.editorPath);
+  const editorDirty = useStore(s => s.editorDirty);
   const snapshot = useStore((s) => s.snapshot);
   // Rust's answer, not a local guess: the EQ window can be closed with its own
   // close button, and this button has to know (SPEC §12).
@@ -31,15 +40,18 @@ export default function TitleBar() {
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="tb-left" data-tauri-drag-region>
-        <span className="wordmark">
-          ONYX<em>.</em>
+        <span className="wordmark">{t("ONYX")}<em>.</em>
         </span>
+        <nav className="mode-tabs" role="tablist" aria-label={t("工作模式")}>
+          <button role="tab" aria-selected={!editorActive} disabled={modeSwitching} onClick={() => setEditorActive(false)}>{t("试听")}</button>
+          <button role="tab" aria-selected={editorActive} aria-busy={modeSwitching} disabled={modeSwitching || snapshot?.blind.active} title={snapshot?.blind.active ? t('请先结束盲测，再进入剪辑') : undefined} onClick={() => setEditorActive(true)}>{t("剪辑")}</button>
+        </nav>
       </div>
 
       <div className="tb-center" data-tauri-drag-region>
-        {info ? (
+        {t(editorActive ? <span className="tb-file" title={t(editorPath)}>{t(editorPath.split(/[\\/]/).pop() || '未载入音频')}{t(editorDirty ? ' *' : '')}</span> : info ? (
           <>
-            <span className="tb-file" title={info.path}>
+            <span className="tb-file" title={t(info.path)}>
               {info.title ?? info.fileName}
             </span>
             <span className="dot">·</span>
@@ -48,23 +60,23 @@ export default function TitleBar() {
                 what you hear (SPEC §18). So it is a button, and it goes
                 where the bank is chosen. Everything else stays plain text —
                 nothing about a 24-bit FLAC is actionable. */}
-            {info.synthBank ? (
+            {t(info.synthBank ? (
               <button
                 className="tb-badge as-link"
                 onClick={() => !settingsOpen && toggleSettings()}
-                title={`Rendered through ${info.synthBank} \u00B7 choose another .sf2 in Settings`}
+                title={t(`Rendered through ${info.synthBank} \u00B7 choose another .sf2 in Settings`)}
               >
-                {formatBadge(info)}
+                {t(formatBadge(info))}
               </button>
             ) : (
-              <span className="tb-badge">{formatBadge(info)}</span>
-            )}
-            {lufs != null && (
+              <span className="tb-badge">{t(formatBadge(info))}</span>
+            ))}
+            {t(lufs != null && (
               <>
                 <span className="dot">·</span>
-                <span className="tb-lufs num">{formatLufs(lufs)} LUFS</span>
+                <span className="tb-lufs num">{t(formatLufs(lufs))}{t(" LUFS")}</span>
               </>
-            )}
+            ))}
           </>
         ) : blinded ? (
           <span className="tb-idle shimmer">
@@ -74,42 +86,41 @@ export default function TitleBar() {
                 test" is what the lit Blind button says. The trial number is the
                 one part of it that is written nowhere else, so it is the part
                 that survives to 420 px. */}
-            <span className="tb-blind-word">blind test · </span>trial {blind?.trial} /{" "}
-            {blind?.trials}
-            <span className="tb-blind-tail"> · identity hidden</span>
+            <span className="tb-blind-word">{t("blind test · ")}</span>{t("trial ")}{t(blind?.trial)} /{t(" ")}
+            {t(blind?.trials)}
+            <span className="tb-blind-tail">{t(" · identity hidden")}</span>
           </span>
         ) : (
-          <span className="tb-idle">no track loaded</span>
-        )}
+          <span className="tb-idle">{t("no track loaded")}</span>
+        ))}
       </div>
 
       <div className="tb-right">
+        <select className="language-switch" aria-label={t("Language / 语言")} value={language} onChange={e => setLanguage(e.target.value === 'en' ? 'en' : 'zh')}><option value="zh">{t("中文")}</option><option value="en">{t("English")}</option></select>
         <button
           className="tb-btn"
           data-on={eqOpen}
           onClick={toggleEqWindow}
-          title={
-            eqBypassed
+          title={t(eqBypassed
               ? "Equaliser (E) \u00B7 bypassed (\u21E7E)"
               : eqOpen
                 ? "Equaliser (E) \u00B7 open in its own window"
-                : "Equaliser (E)"
-          }
-          aria-label="Equaliser"
+                : "Equaliser (E)")}
+          aria-label={t("Equaliser")}
           aria-pressed={eqOpen}
         >
           <IconEq size={13} />
           {/* The curve is edited in another window, possibly on another screen:
               this is the only place in the main window that can say the EQ is
               switched off under a curve the user drew. */}
-          {eqBypassed ? "EQ \u00F8" : "EQ"}
+          {t(eqBypassed ? "EQ \u00F8" : "EQ")}
         </button>
         <button
           className="tb-btn"
           data-on={settingsOpen}
           onClick={toggleSettings}
-          title="Settings · appearance, engine source, MIDI bank"
-          aria-label="Settings"
+          title={t("Settings · appearance, engine source, MIDI bank")}
+          aria-label={t("Settings")}
         >
           <IconGear size={13} />
         </button>
@@ -117,8 +128,8 @@ export default function TitleBar() {
           className="tb-btn"
           data-on={shortcutsOpen}
           onClick={toggleShortcuts}
-          title="Keyboard shortcuts (?)"
-          aria-label="Shortcuts"
+          title={t("Keyboard shortcuts (?)")}
+          aria-label={t("Shortcuts")}
         >
           <IconKeys size={13} />
         </button>
@@ -126,34 +137,34 @@ export default function TitleBar() {
         {/* macOS draws its own traffic lights (the title bar leaves 78 px for
             them); on Windows and Linux the window has no decorations at all,
             so without these three it can only be closed with Alt+F4. */}
-        {!IS_MAC && (
+        {t(!IS_MAC && (
           <div className="tb-winctl">
             <button
               className="tb-win"
               onClick={minimizeWindow}
-              title="Minimise"
-              aria-label="Minimise"
+              title={t("Minimise")}
+              aria-label={t("Minimise")}
             >
               <IconMinimize size={12} />
             </button>
             <button
               className="tb-win"
               onClick={toggleMaximizeWindow}
-              title="Maximise / restore"
-              aria-label="Maximise or restore"
+              title={t("Maximise / restore")}
+              aria-label={t("Maximise or restore")}
             >
               <IconMaximize size={12} />
             </button>
             <button
               className="tb-win danger"
               onClick={closeWindow}
-              title="Close"
-              aria-label="Close"
+              title={t("Close")}
+              aria-label={t("Close")}
             >
               <IconClose size={12} />
             </button>
           </div>
-        )}
+        ))}
       </div>
     </header>
   );

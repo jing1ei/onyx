@@ -1,4 +1,33 @@
-# Onyx
+# Onyx Branch
+
+基于 [jing1ei/onyx](https://github.com/jing1ei/onyx) 的独立修改版，保留上游历史和 MIT 许可证。此仓库不是原作者的官方发布。
+
+当前增加了同窗口的试听 / Edit 剪辑、中英文切换、裁剪、删除、标准化、撤销 / 重做，以及独立淡入淡出曲线。支持真实路径导入、覆盖原文件和另存为；切换模式不会自动保存。剪辑期间只允许一个播放音源。
+
+普通 PCM/float WAV 直接读取并复用波形索引，减少切换准备开销；保存复用数据转换结果，避免重复同步。原文件外部修改检查、编码验证和写入保护保留。
+
+编辑器当前主要在 Windows 上验证；其他平台和音频硬件兼容性未完成验证。支持单/双声道，源文件及浮点编辑数据分别限制 256 MiB。压缩格式保存会重新编码，不保证保留全部元数据。
+
+## 构建和验证修改版
+
+Windows EXE 和安装包见 [Releases](https://github.com/MoeCici/Onyx_Branch/releases)。运行依赖和验证范围见 [Windows 发行说明](WINDOWS_RELEASE.zh-CN.md)。需要安装包时运行 `./scripts/build-editor-local.ps1 -Installer -OutputDirectory '.tools/windows-release'`。
+
+需要 Node.js、Rust、对应平台的 Tauri 构建依赖。Windows 使用 MSVC 工具链和 WebView2。发布的安装包和完整便携 ZIP 已包含 FFmpeg/FFprobe。源码仓库不直接存储大体积 EXE；Windows 构建前，从 [Gyan 官方归档](https://github.com/GyanD/codexffmpeg/releases/download/8.0/ffmpeg-8.0-full_build.7z) 获取 FFmpeg 8.0 full build，运行 `./scripts/prepare-ffmpeg.ps1 -FFmpegDirectory '<解压目录>'`，脚本会校验固定版本哈希。
+
+```powershell
+npm ci
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/vite/bin/vite.js build
+cargo build -p onyx --release
+```
+
+无声测试：`node scripts/test-fade.mjs`、`node scripts/test-wave-index.mjs`、`node scripts/test-save-payload-silent.mjs`、`node scripts/test-wav-direct.mjs`。浏览器测试需要 Playwright 和 Windows Edge；WAV 对照测试需要 FFmpeg。UI 模拟回归先运行 `node node_modules/vite/bin/vite.js --mode mock --port 1421`，再运行 `node scripts/test-fade-seek.mjs` 和 `node scripts/test-editor-switch-silent.mjs`。这些测试不代表真实声卡试听验收。
+
+以下保留上游项目说明；其中发布链接、跨平台验证状态和原有 CI 描述属于上游，不是本修改版的验收承诺。
+
+---
+
+# Onyx (upstream documentation)
 
 [![CI](https://github.com/jing1ei/onyx/actions/workflows/ci.yml/badge.svg)](https://github.com/jing1ei/onyx/actions/workflows/ci.yml)
 [![Audit](https://github.com/jing1ei/onyx/actions/workflows/audit.yml/badge.svg)](https://github.com/jing1ei/onyx/actions/workflows/audit.yml)

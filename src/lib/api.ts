@@ -93,6 +93,28 @@ export async function listenEvent<T>(
 /* ── app / playlist ──────────────────────────────────────────────────────── */
 
 export const appState = (): Promise<AppSnapshot> => call("app_state");
+type EditorRequest = { action: string; path?: string; bytes?: string; suggestedName?: string; language?: string; offset?: number; preparedId?: string };
+const editorCommand = <T>(request: EditorRequest): Promise<T> => call("editor_io", { request: { ...request, language: localStorage.getItem('onyx.language') || 'zh' } });
+export const editorIo = (request: EditorRequest) => editorCommand<{ canceled: boolean; name?: string; data?: string; path?: string; byteLength?: number; preparedId?: string }>(request);
+// Preserve ownership order across rapid play/cancel/mode-switch requests.
+let editorPlaybackTransition: Promise<void> = Promise.resolve();
+export function editorPlayback(editing: boolean) {
+  const next = editorPlaybackTransition.then(() => editorIo({action: editing ? 'enter' : 'leave'}));
+  editorPlaybackTransition = next.then(() => {}, () => {});
+  return next;
+}
+export async function editorRead(path: string, length: number, preparedId?: string, cancelled = () => false): Promise<ArrayBuffer> {
+  if (!Number.isSafeInteger(length) || length < 44 || length > 257 * 1024 * 1024) throw new Error('无效音频数据');
+  const bytes = new Uint8Array(length);
+  for (let offset = 0; offset < length;) {
+    if (cancelled()) throw new Error('编辑预载已过期');
+    const chunk = await editorCommand<ArrayBuffer>({ action: 'read', path, offset, preparedId });
+    if (cancelled()) throw new Error('编辑预载已过期');
+    if (!(chunk instanceof ArrayBuffer) || !chunk.byteLength || offset + chunk.byteLength > length) throw new Error('音频数据不完整');
+    bytes.set(new Uint8Array(chunk), offset); offset += chunk.byteLength;
+  }
+  return bytes.buffer;
+}
 
 export const openFiles = (paths: string[], replace: boolean): Promise<AppSnapshot> =>
   call("open_files", { paths, replace });

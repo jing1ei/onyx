@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   applyTheme,
@@ -144,27 +145,19 @@ export default function ThemeEditor({ compact = false }: Props) {
   return (
     <div className="theme-editor" data-compact={compact || undefined}>
       <div className="te-bar">
-        <button className="ghost-btn" onClick={() => copy("Default theme", defaultThemeText)}>
-          Copy default
-        </button>
-        <button className="ghost-btn" onClick={() => copy("Current theme", currentThemeSource)}>
-          Copy current
-        </button>
+        <button className="ghost-btn" onClick={() => copy("Default theme", defaultThemeText)}>{t("Copy default")}</button>
+        <button className="ghost-btn" onClick={() => copy("Current theme", currentThemeSource)}>{t("Copy current")}</button>
         <button
           className="ghost-btn accent"
-          title="The theme plus a short brief, so pasting it into any chat is enough"
+          title={t("The theme plus a short brief, so pasting it into any chat is enough")}
           onClick={() => copy("Theme and brief", () => themeForAgent(text || undefined))}
-        >
-          Copy for agent
-        </button>
+        >{t("Copy for agent")}</button>
         <span className="spacer" />
         <button
           className="ghost-btn"
           onClick={() => setOutcome(validateTheme(text))}
-          title="Check without applying"
-        >
-          Validate
-        </button>
+          title={t("Check without applying")}
+        >{t("Validate")}</button>
       </div>
 
       <textarea
@@ -174,11 +167,9 @@ export default function ThemeEditor({ compact = false }: Props) {
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
-        aria-label="Theme document"
+        aria-label={t("Theme document")}
         data-bad={errors.length > 0 || undefined}
-        placeholder={
-          "Paste a theme document here.\n\nCopy default → give it to an agent → paste the reply back."
-        }
+        placeholder={t("Paste a theme document here.\n\nCopy default → give it to an agent → paste the reply back.")}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           /* An input method is composing: every key below belongs to the
@@ -219,90 +210,79 @@ export default function ThemeEditor({ compact = false }: Props) {
       />
 
       <div className="te-status">
-        {summary && errors.length === 0 && (
+        {t(summary && errors.length === 0 && (
           <span className="te-ok">
-            {summary.name} · {summary.tokens} token{summary.tokens === 1 ? "" : "s"}
+            {summary.name} · {summary.tokens} {t(summary.tokens === 1 ? 'token' : 'tokens')}
           </span>
-        )}
-        {errors.length > 0 && (
+        ))}
+        {t(errors.length > 0 && (
           <span className="te-bad">
-            {errors.length} error{errors.length === 1 ? "" : "s"}
+            {t(errors.length)}{t(" error")}{t(errors.length === 1 ? "" : "s")}
           </span>
-        )}
-        {warnings.length > 0 && (
+        ))}
+        {t(warnings.length > 0 && (
           <span className="te-warn">
-            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
+            {t(warnings.length)}{t(" warning")}{t(warnings.length === 1 ? "" : "s")}
           </span>
-        )}
-        {dirty && <span className="te-chip">unapplied edits</span>}
+        ))}
+        {t(dirty && <span className="te-chip">{t("unapplied edits")}</span>)}
         <span className="spacer" />
-        <button className="ghost-btn" disabled={busy || appliedText === null} onClick={revert}>
-          Revert
-        </button>
+        <button className="ghost-btn" disabled={busy || appliedText === null} onClick={revert}>{t("Revert")}</button>
         <button
           className="primary-btn"
           disabled={busy || errors.length > 0}
           onClick={apply}
-          title={errors.length > 0 ? "Fix the errors first" : "Apply to every window"}
-        >
-          Apply
-        </button>
+          title={t(errors.length > 0 ? "Fix the errors first" : "Apply to every window")}
+        >{t("Apply")}</button>
       </div>
 
-      {problems.length > 0 && (
+      {t(problems.length > 0 && (
         <ul className="te-problems" aria-live="polite">
-          {problems.slice(0, 40).map((p, i) => (
+          {t(problems.slice(0, 40).map((p, i) => (
             <li key={`${p.line}:${p.col}:${i}`} data-level={p.level}>
               <button
                 className="te-line"
-                title="Go to this line"
+                title={t("Go to this line")}
                 onClick={() => focusLine(area.current, p.line)}
               >
-                {p.line}
+                {t(p.line)}
               </button>
               <span className="te-msg">
-                {p.message}
-                {p.suggestion && <em className="te-hint"> — {p.suggestion}</em>}
+                {t(p.message)}
+                {t(p.suggestion && <em className="te-hint"> — {t(p.suggestion)}</em>)}
               </span>
             </li>
-          ))}
-          {problems.length > 40 && <li className="te-more">…and {problems.length - 40} more</li>}
+          )))}
+          {t(problems.length > 40 && <li className="te-more">{t("…and ")}{t(problems.length - 40)}{t(" more")}</li>)}
         </ul>
-      )}
+      ))}
 
-      {outcome && outcome.contrast.some((f) => !f.ok) && (
+      {t(outcome && outcome.contrast.some((f) => !f.ok) && (
         <div className="te-contrast" role="status">
-          <div className="te-contrast-head">
-            Legibility — measured, not blocked. This theme can still be applied.
-          </div>
+          <div className="te-contrast-head">{t("Legibility — measured, not blocked. This theme can still be applied.")}</div>
           <ul>
-            {outcome.contrast
+            {t(outcome.contrast
               .filter((f) => !f.ok)
               .slice(0, 8)
               .map((f) => (
                 <li key={`${f.theme}:${f.label}`}>
-                  <span className="te-theme">{f.theme}</span>
-                  <span className="te-pair">{f.label}</span>
-                  <span className="num te-ratio">{formatRatio(f.ratio)}</span>
-                  <span className="num te-min">needs {f.min.toFixed(1)}:1</span>
+                  <span className="te-theme">{t(f.theme)}</span>
+                  <span className="te-pair">{t(f.label)}</span>
+                  <span className="num te-ratio">{t(formatRatio(f.ratio))}</span>
+                  <span className="num te-min">{t("needs ")}{t(f.min.toFixed(1))}:1</span>
                 </li>
-              ))}
+              )))}
           </ul>
         </div>
-      )}
+      ))}
 
       <div className="te-foot">
-        <span>
-          JSON with <code>//</code> comments and trailing commas. Keys are fixed; unknown ones are
-          errors with a line number.
-        </span>
+        <span>{t("JSON with")}<code>//</code>{t("comments and trailing commas. Keys are fixed; unknown ones are errors with a line number.")}</span>
         <button
           className="ghost-btn danger"
           onClick={resetAppearanceEverywhere}
-          title="Designed themes, champagne accent, system fonts — from anywhere, even an unreadable window"
-        >
-          Reset appearance
-        </button>
+          title={t("Designed themes, champagne accent, system fonts — from anywhere, even an unreadable window")}
+        >{t("Reset appearance")}</button>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useRef } from "react";
 import { beginPaint, useSurface } from "../lib/canvas";
 import { setText } from "../lib/dom";
@@ -52,7 +53,7 @@ export default function Correlation() {
 
   return (
     <div className="wm-corr">
-      <span className="wm-k">Corr</span>
+      <span className="wm-k">{t("Corr")}</span>
       <div className="wm-corr-track" ref={wrapRef}>
         <canvas ref={canvasRef} />
       </div>

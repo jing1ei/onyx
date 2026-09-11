@@ -1,4 +1,6 @@
+import { t } from "./lib/i18n";
 import { useEffect } from "react";
+import { useLanguage } from './lib/i18n';
 import * as api from "./lib/api";
 import { IS_MAC } from "./lib/dom";
 import { carriesFiles, deckAtPoint, dropFilesOnDeck } from "./lib/drop";
@@ -21,8 +23,23 @@ import SettingsPanel from "./components/SettingsPanel";
 import Toasts from "./components/Toasts";
 import ShortcutOverlay from "./components/ShortcutOverlay";
 import DropOverlay from "./components/DropOverlay";
+import Editor from "./editor/Editor";
+import "./editor/unified.css";
 
 export default function App() {
+  const language = useLanguage();
+  useEffect(() => { void api.editorIo({ action: 'language', language }).catch(e => logWarn('Language sync failed', e)); }, [language]);
+  const editorActive = useStore(s => s.editorActive);
+  const modeSwitching = useStore(s => s.modeSwitching);
+  const modeError = useStore(s => s.modeError);
+  useEffect(() => {
+    if (editorActive) void api.transportPause().catch(e => useStore.getState().pushToast("error", api.errorMessage(e)));
+  }, [editorActive]);
+  useEffect(() => {
+    let disposed = false; let off: (() => void) | undefined;
+    void api.listenEvent("onyx://editor-open", () => useStore.getState().setEditorActive(true)).then(un => { if (disposed) un(); else off = un; });
+    return () => { disposed = true; off?.(); };
+  }, []);
   const snapshot = useStore((s) => s.snapshot);
   const settingsOpen = useStore((s) => s.settingsOpen);
   const shortcutsOpen = useStore((s) => s.shortcutsOpen);
@@ -84,6 +101,7 @@ export default function App() {
       try {
         const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         const un = await getCurrentWebview().onDragDropEvent((event) => {
+          if (useStore.getState().editorActive) return;
           const payload = event.payload;
           if (payload.type === "over") {
             /* Which affordance to show. A file held over a waveform lane is
@@ -207,26 +225,31 @@ export default function App() {
   }, [pushToast, setDropActive, setSnapshot]);
 
   return (
-    <div className="app" data-platform={IS_MAC ? "mac" : "win"}>
+    <div className={"app" + (editorActive ? " editing" : "")} data-platform={IS_MAC ? "mac" : "win"}>
       <TitleBar />
 
-      <div className="stage">
+      <div className="editor-tab-panel" role="tabpanel" aria-label={t("剪辑")} hidden={!editorActive}>
+        <Editor active={editorActive} />
+      </div>
+      <div className="stage" style={editorActive ? { display: "none" } : undefined}>
         <WaveformStack />
         <Playlist />
       </div>
 
-      {abEnabled && !blindActive && <AbRail />}
+      {t(!editorActive && abEnabled && !blindActive && <AbRail />)}
 
-      <TransportBar />
-      <BadgeRail />
+      {t(!editorActive && <TransportBar />)}
+      {t(!editorActive && <BadgeRail />)}
 
-      {settingsOpen && <SettingsPanel />}
-      {blindOpen && <BlindTest />}
-      {shortcutsOpen && <ShortcutOverlay />}
-      {dropActive && <DropOverlay />}
+      {t(settingsOpen && <SettingsPanel />)}
+      {t(blindOpen && <BlindTest />)}
+      {t(shortcutsOpen && <ShortcutOverlay />)}
+      {t(dropActive && <DropOverlay />)}
       <Toasts />
+      {modeSwitching && <div className="mode-feedback" role="status">{t('正在准备音频，请稍候…')}</div>}
+      {!modeSwitching && modeError && <div className="mode-feedback error" role="alert"><span>{t('无法完成操作：')}{t(modeError)}</span><button aria-label={t('Close')} onClick={() => useStore.getState().setModeError(null)}>×</button></div>}
 
-      {!snapshot && <div className="connecting">connecting to engine</div>}
+      {t(!snapshot && <div className="connecting">{t("connecting to engine")}</div>)}
     </div>
   );
 }

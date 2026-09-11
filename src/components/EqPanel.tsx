@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * Interactive spectrum EQ — SPEC.md §12.
  *
@@ -861,14 +862,14 @@ export default function EqPanel() {
       <div className="eq-inner">
         <div className="eq-left">
           <div className="eq-head">
-            <span className="label">Equaliser</span>
+            <span className="label">{t("Equaliser")}</span>
             <button
               className="tr-toggle"
               data-on={cfg.enabled}
               onClick={() => setEnabled(!cfg.enabled)}
-              title={"EQ bypass (\u21E7E)"}
+              title={t("EQ bypass (\u21E7E)")}
             >
-              {cfg.enabled ? "Engaged" : "Bypassed"}
+              {t(cfg.enabled ? "Engaged" : "Bypassed")}
             </button>
             <span className="eq-readout num" ref={readoutRef} />
             <span className="spacer" />
@@ -876,18 +877,16 @@ export default function EqPanel() {
                 window does, and the solo sweep is the half worth keeping. */}
             <span className="eq-hint eq-head-hint">
               <span className="verbose">
-                {"drag = freq / gain \u00B7 wheel = Q \u00B7 dbl-click = delete "}
+                {t("drag = freq / gain \u00B7 wheel = Q \u00B7 dbl-click = delete ")}
               </span>
-              <b>{"\u2318/Ctrl-drag = solo sweep"}</b>
+              <b>{t("\u2318/Ctrl-drag = solo sweep")}</b>
             </span>
             <button
               className="ghost-btn"
               disabled={cfg.bands.length === 0}
               onClick={() => commit({ ...cfgRef.current, bands: [] }, true)}
-              title="Remove every band"
-            >
-              Clear
-            </button>
+              title={t("Remove every band")}
+            >{t("Clear")}</button>
             {/* Always-on-top is the plugin-editor default and a preference, not
                 a law: on a second monitor it buys nothing, and Rust remembers
                 the answer in settings.json. */}
@@ -895,16 +894,14 @@ export default function EqPanel() {
               className="ghost-btn"
               data-on={pinned}
               onClick={() => setEqWindowPinned(!pinned)}
-              title={
-                pinned
+              title={t(pinned
                   ? "Floating above other windows \u00B7 click to let it go behind"
-                  : "Behind other windows \u00B7 click to float it on top"
-              }
+                  : "Behind other windows \u00B7 click to float it on top")}
               aria-pressed={pinned}
             >
-              {pinned ? "Float" : "Behind"}
+              {t(pinned ? "Float" : "Behind")}
             </button>
-            <button className="close-btn" onClick={closeEqWindow} title="Close (E or Esc)">
+            <button className="close-btn" onClick={closeEqWindow} title={t("Close (E or Esc)")}>
               <IconClose />
             </button>
           </div>
@@ -935,14 +932,14 @@ export default function EqPanel() {
             }}
           >
             <canvas ref={canvasRef} />
-            {menu && menuBand && (
+            {t(menu && menuBand && (
               <div
                 className="eq-menu"
                 style={{ left: Math.min(menu.x, (surface.current.w || 0) - 168), top: menu.y }}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="eq-menu-head label">Filter type</div>
-                {FILTER_KINDS.map((kind) => (
+                <div className="eq-menu-head label">{t("Filter type")}</div>
+                {t(FILTER_KINDS.map((kind) => (
                   <button
                     key={kind}
                     className="eq-menu-item"
@@ -952,14 +949,14 @@ export default function EqPanel() {
                       setMenu(null);
                     }}
                   >
-                    {FILTER_LABEL[kind]}
+                    {t(FILTER_LABEL[kind])}
                   </button>
-                ))}
-                {(menuBand.kind === "highPass" || menuBand.kind === "lowPass") && (
+                )))}
+                {t((menuBand.kind === "highPass" || menuBand.kind === "lowPass") && (
                   <>
-                    <div className="eq-menu-head label">Slope</div>
+                    <div className="eq-menu-head label">{t("Slope")}</div>
                     <div className="eq-menu-slopes">
-                      {SLOPE_CHOICES.map((s) => (
+                      {t(SLOPE_CHOICES.map((s) => (
                         <button
                           key={s}
                           className="num"
@@ -969,12 +966,12 @@ export default function EqPanel() {
                             setMenu(null);
                           }}
                         >
-                          {s}
+                          {t(s)}
                         </button>
-                      ))}
+                      )))}
                     </div>
                   </>
-                )}
+                ))}
                 <button
                   className="eq-menu-item"
                   data-danger="true"
@@ -982,31 +979,26 @@ export default function EqPanel() {
                     removeBand(menuBand.id);
                     setMenu(null);
                   }}
-                >
-                  Delete band
-                </button>
+                >{t("Delete band")}</button>
               </div>
-            )}
+            ))}
           </div>
         </div>
 
         <div className="eq-right">
           <div className="eq-right-head">
-            <span className="label">Bands</span>
+            <span className="label">{t("Bands")}</span>
             <span className="spacer" />
             <span className="num eq-count">
-              {cfg.bands.length} / {MAX_EQ_BANDS}
+              {t(cfg.bands.length)} / {t(MAX_EQ_BANDS)}
             </span>
           </div>
 
           <div className="eq-rows" ref={rowsRef}>
-            {cfg.bands.length === 0 && (
-              <div className="eq-empty">
-                No bands. Click anywhere on the curve to add one, or hold {"\u2318"}/Ctrl and drag to
-                sweep a solo bandpass across the spectrum.
-              </div>
-            )}
-            {cfg.bands.map((band) => (
+            {t(cfg.bands.length === 0 && (
+              <div className="eq-empty">{t("No bands. Click anywhere on the curve to add one, or hold")}{t("\u2318")}{t("/Ctrl and drag to sweep a solo bandpass across the spectrum.")}</div>
+            ))}
+            {t(cfg.bands.map((band) => (
               <div
                 key={band.id}
                 className="eq-row"
@@ -1024,16 +1016,16 @@ export default function EqPanel() {
                   onClick={() =>
                     patchBand(band.id, kindPatch(nextKind(band.kind), band), true)
                   }
-                  title="Cycle the filter type (or right-click the node)"
+                  title={t("Cycle the filter type (or right-click the node)")}
                 >
-                  {FILTER_SHORT[band.kind]}
+                  {t(FILTER_SHORT[band.kind])}
                 </button>
                 <span className="f num" />
                 <span className="g num" />
                 <span className="q num" />
                 <button
                   className="eq-row-btn solo"
-                  title="Hold to audition this band's frequency region"
+                  title={t("Hold to audition this band's frequency region")}
                   onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     soloBand(band);
@@ -1041,40 +1033,32 @@ export default function EqPanel() {
                   onPointerUp={() => soloBand(null)}
                   onPointerCancel={() => soloBand(null)}
                 >
-                  {"\u25CE"}
+                  {t("\u25CE")}
                 </button>
                 <button
                   className="eq-row-btn"
                   data-on={band.enabled}
-                  title="Bypass this band (Alt-click its node)"
+                  title={t("Bypass this band (Alt-click its node)")}
                   onClick={() => patchBand(band.id, { enabled: !band.enabled }, true)}
                 >
-                  {"\u00F8"}
+                  {t("\u00F8")}
                 </button>
                 <button
                   className="eq-row-btn danger"
-                  title="Delete this band (double-click its node)"
+                  title={t("Delete this band (double-click its node)")}
                   onClick={() => removeBand(band.id)}
                 >
-                  {"\u00D7"}
+                  {t("\u00D7")}
                 </button>
               </div>
-            ))}
+            )))}
           </div>
 
-          {blindActive && (
-            <div className="eq-hint" style={{ color: "var(--m-warn)" }}>
-              The analyser is masked while a blind test is running: a live spectrum of the audible
-              slot names it as plainly as a meter would.
-            </div>
-          )}
+          {t(blindActive && (
+            <div className="eq-hint" style={{ color: "var(--m-warn)" }}>{t("The analyser is masked while a blind test is running: a live spectrum of the audible slot names it as plainly as a meter would.")}</div>
+          ))}
 
-          <div className="eq-hint eq-foot-hint">
-            Click the curve to add a bell, right-click a node for its filter type. Drag a node for
-            frequency and gain, wheel over it for Q, double-click to remove it. Hold {"\u2318"}/Ctrl
-            and drag to sweep a solo bandpass. The curve is drawn from the same biquad coefficients
-            the engine runs, not a sketch. Meters stay on the true programme.
-          </div>
+          <div className="eq-hint eq-foot-hint">{t("Click the curve to add a bell, right-click a node for its filter type. Drag a node for frequency and gain, wheel over it for Q, double-click to remove it. Hold")}{t("\u2318")}{t("/Ctrl and drag to sweep a solo bandpass. The curve is drawn from the same biquad coefficients the engine runs, not a sketch. Meters stay on the true programme.")}</div>
         </div>
       </div>
     </div>

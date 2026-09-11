@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * The metering cluster that sits to the right of the waveform lanes.
  *
@@ -174,24 +175,23 @@ export default function MeterCluster() {
       <div className="wm-stack">
         <div className="wm-head">
           <span className="wm-int num" ref={intEl}>
-            {"\u2212\u221E"}
+            {t("\u2212\u221E")}
           </span>
-          <span className="wm-int-u">
-            LUFS<em>I</em>
+          <span className="wm-int-u">{t("LUFS")}<em>{t("I")}</em>
           </span>
         </div>
 
         <div className="wm-grid">
           <div className="wm-cell">
-            <span className="wm-k">M</span>
+            <span className="wm-k">{t("M")}</span>
             <span className="wm-v num" ref={momEl}>
-              {"\u2014"}
+              {t("\u2014")}
             </span>
           </div>
           <div className="wm-cell">
-            <span className="wm-k">S</span>
+            <span className="wm-k">{t("S")}</span>
             <span className="wm-v num" ref={shortEl}>
-              {"\u2014"}
+              {t("\u2014")}
             </span>
           </div>
           <button
@@ -205,23 +205,17 @@ export default function MeterCluster() {
                   pushToast("error", `Could not reset meters: ${api.errorMessage(err)}`),
                 )
             }
-            title={
-              "True peak, dBTP \u2014 the label reads CLIP once a sample has clipped.\nClick to reset the peak holds and the clip counter."
-            }
+            title={t("True peak, dBTP \u2014 the label reads CLIP once a sample has clipped.\nClick to reset the peak holds and the clip counter.")}
           >
-            <span className="wm-k" ref={tpKeyEl}>
-              TP
-            </span>
+            <span className="wm-k" ref={tpKeyEl}>{t("TP")}</span>
             <span className="wm-v num" ref={tpEl}>
-              {"\u2014"}
+              {t("\u2014")}
             </span>
           </button>
           <div className="wm-cell">
-            <span className="wm-k" title="Loudness range, LU">
-              LRA
-            </span>
+            <span className="wm-k" title={t("Loudness range, LU")}>{t("LRA")}</span>
             <span className="wm-v num" ref={lraEl}>
-              {"\u2014"}
+              {t("\u2014")}
             </span>
           </div>
         </div>
@@ -231,36 +225,33 @@ export default function MeterCluster() {
             windows"), and a mask with no slot class collapsed to zero width —
             which is a leak in itself, since the strip then looked different
             during a blind test than outside one. */}
-        {blindActive ? (
+        {t(blindActive ? (
           <div className="masked-panel wm-lu" style={{ height: LU_BAR_H }} />
         ) : (
           <LoudnessBar />
-        )}
+        ))}
 
-        {blindActive ? (
+        {t(blindActive ? (
           <div className="masked-panel wm-corr" style={{ height: 14 }} />
         ) : (
           <Correlation />
-        )}
+        ))}
 
-        {blindActive && (
-          <p className="wm-note">
-            Read-outs are hidden while a blind test runs: 0.4 LUFS is visible long before it is
-            audible.
-          </p>
-        )}
+        {t(blindActive && (
+          <p className="wm-note">{t("Read-outs are hidden while a blind test runs: 0.4 LUFS is visible long before it is audible.")}</p>
+        ))}
 
         <div className="wm-foot">
           <span className="num" ref={rateEl}>
-            {"\u2014"}
+            {t("\u2014")}
           </span>
           <span className="wm-trans" ref={transEl} data-ok="false">
-            {"\u2014"}
+            {t("\u2014")}
           </span>
         </div>
       </div>
 
-      {blindActive ? <div className="masked-panel wm-level" /> : <LevelMeter />}
+      {t(blindActive ? <div className="masked-panel wm-level" /> : <LevelMeter />)}
     </aside>
   );
 }

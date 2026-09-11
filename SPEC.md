@@ -61,7 +61,7 @@ macOS first, Windows second. Style: minimal, artistic luxury, flowing.
 | two windows (main, EQ) | **three**: the theme editor is its own webview, `theme.html` — §20 |
 | no native menu | an **Appearance** menu, for the one case where the UI cannot be seen — §20 |
 
-§3 below is the **consolidated, current** IPC surface (66 commands): if a
+§3 below is the **consolidated, current** IPC surface (67 commands): if a
 command is not in §3.1 it does not exist.
 
 ## 0. Repository layout
@@ -193,7 +193,7 @@ use onyx_core::waveform::{Waveform, WaveformData};
 
 ### 3.1 Commands (`#[tauri::command]`, snake_case names, camelCase payloads)
 
-The complete registered surface — 66 commands. Every one returns
+The complete registered surface — 67 commands. Every one returns
 `Result<T, String>`; nothing panics on user input. This table, the
 `generate_handler!` list, the `src/lib/api.ts` wrappers and the `case` labels of
 `src/lib/mock.ts`'s dispatch are held equal in every direction — the count above
@@ -204,6 +204,7 @@ by `every_front_end_command_is_registered_and_nothing_extra_is` in
 | command | args | returns |
 |---|---|---|
 | `app_state` | – | `AppSnapshot` |
+| `editor_io` | `request: { action, path?, bytes?, suggestedName?, offset?, preparedId? }` | Editing open / prepare / read / preview / overwrite / saveAs; enter blocks native playback while the editor owns it, leave releases ownership paused. Open/prepare return `{ canceled, name?, path?, byteLength?, preparedId? }`; read returns a bounded binary chunk. Prepare never replaces the active document. Mock cancels without filesystem access. |
 | `open_files` | `paths: Vec<String>`, `replace: bool` | `AppSnapshot` |
 | `pick_and_open_files` | `replace: bool` | `AppSnapshot` |
 | `playlist_play_index` | `index: usize` | `AppSnapshot` |

@@ -121,6 +121,7 @@ impl RtFaults {
 /// Atomics shared between the callback and everyone else.
 pub struct RtShared {
     playing: AtomicBool,
+    playback_blocked: AtomicBool,
     pos_frames: AtomicU64,
     engine_rate: AtomicU32,
     underruns: AtomicU32,
@@ -138,6 +139,7 @@ impl RtShared {
     fn new(rate: u32) -> Self {
         RtShared {
             playing: AtomicBool::new(false),
+            playback_blocked: AtomicBool::new(false),
             pos_frames: AtomicU64::new(0),
             engine_rate: AtomicU32::new(rate),
             underruns: AtomicU32::new(0),
@@ -179,7 +181,7 @@ impl RtShared {
     }
 
     pub fn is_playing(&self) -> bool {
-        self.playing.load(Ordering::Relaxed)
+        !self.playback_blocked.load(Ordering::Acquire) && self.playing.load(Ordering::Relaxed)
     }
 
     pub fn is_buffering(&self) -> bool {
@@ -473,8 +475,10 @@ impl RtCore {
                     }
                 }
                 RtCmd::Play => {
-                    self.env_target = 1.0;
-                    self.shared.playing.store(true, Ordering::Relaxed);
+                    if !self.shared.playback_blocked.load(Ordering::Acquire) {
+                        self.env_target = 1.0;
+                        self.shared.playing.store(true, Ordering::Relaxed);
+                    }
                 }
                 RtCmd::Pause => {
                     self.env_target = 0.0;
@@ -544,6 +548,15 @@ impl RtCore {
     /// through (SPEC §6).
     fn process(&mut self, out: &mut [f32], channels: usize) {
         self.drain_commands();
+        // The integrated editor owns playback while active. This guard also
+        // covers queued autoplay, other windows and the monitor/EQ tail.
+        if self.shared.playback_blocked.load(Ordering::Acquire) {
+            self.env = 0.0;
+            self.env_target = 0.0;
+            self.shared.playing.store(false, Ordering::Relaxed);
+            out.fill(0.0);
+            return;
+        }
         let channels = channels.max(1);
         let total_frames = out.len() / channels;
         let mut done = 0usize;
@@ -1264,7 +1277,15 @@ impl AudioEngine {
     }
 
     pub fn play(&self) {
-        self.push(RtCmd::Play);
+        if !self.shared.playback_blocked.load(Ordering::Acquire) {
+            self.push(RtCmd::Play);
+        }
+    }
+
+    /// Hand playback to the editor without opening or changing an audio device.
+    pub fn set_playback_blocked(&self, blocked: bool) {
+        self.pause();
+        self.shared.playback_blocked.store(blocked, Ordering::Release);
     }
 
     pub fn pause(&self) {
@@ -1272,6 +1293,9 @@ impl AudioEngine {
     }
 
     pub fn toggle(&self) -> bool {
+        if self.shared.playback_blocked.load(Ordering::Acquire) {
+            return false;
+        }
         if self.shared.is_playing() {
             self.pause();
             false
@@ -2257,6 +2281,37 @@ mod tests {
         let mut out = vec![1.0f32; 512];
         core.process(&mut out, 2);
         assert!(out.iter().all(|s| *s == 0.0));
+    }
+
+    #[test]
+    fn editor_ownership_blocks_queued_play_and_releases_paused() {
+        let (mut core, shared, cmds) = make_core(48_000);
+        cmds.push(RtCmd::LoadDeck {
+            deck: 0,
+            pcm: dc(48_000, 0.5),
+            trim: 1.0,
+        })
+        .unwrap();
+        cmds.push(RtCmd::Play).unwrap();
+        let mut out = vec![0.0; 2048];
+        core.process(&mut out, 2);
+        assert!(out.iter().any(|s| *s != 0.0));
+        let position = shared.position_frames();
+        shared.playback_blocked.store(true, Ordering::Release);
+        assert!(!shared.is_playing());
+        // Autoplay from another entry/window must not start a second source.
+        cmds.push(RtCmd::Play).unwrap();
+        core.process(&mut out, 2);
+        assert!(out.iter().all(|s| *s == 0.0));
+        assert_eq!(shared.position_frames(), position);
+        shared.playback_blocked.store(false, Ordering::Release);
+        core.process(&mut out, 2);
+        assert!(out.iter().all(|s| *s == 0.0));
+        assert!(!shared.is_playing());
+        cmds.push(RtCmd::Play).unwrap();
+        core.process(&mut out, 2);
+        assert!(shared.is_playing());
+        assert!(out.iter().any(|s| *s != 0.0));
     }
 
     #[test]

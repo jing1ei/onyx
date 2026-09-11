@@ -1,4 +1,5 @@
 /** Number / time formatting. Typographic minus (−, U+2212) everywhere it shows. */
+import { t } from './i18n';
 
 const MINUS = "\u2212";
 const INF = "\u2212\u221E"; // −∞
@@ -77,8 +78,8 @@ export function formatBytes(bytes: number): string {
 }
 
 function formatChannels(channels: number): string {
-  if (channels === 1) return "mono";
-  if (channels === 2) return "stereo";
+  if (channels === 1) return t("mono");
+  if (channels === 2) return t("stereo");
   return `${channels} ch`;
 }
 
@@ -153,4 +154,3 @@ export function formatBadge(
   parts.push(formatChannels(info.channels));
   return parts.join(" \u00B7 ");
 }
-

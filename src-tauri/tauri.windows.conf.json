@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "resources": {
+      "../vendor/ffmpeg/bin/ffmpeg.exe": "ffmpeg.exe",
+      "../vendor/ffmpeg/bin/ffprobe.exe": "ffprobe.exe",
+      "../vendor/ffmpeg/LICENSE-GPLv3.txt": "FFmpeg-LICENSE-GPLv3.txt",
+      "../vendor/ffmpeg/UPSTREAM-README.txt": "FFmpeg-UPSTREAM-README.txt",
+      "../vendor/ffmpeg/NOTICE.md": "FFmpeg-NOTICE.md"
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /** Hand-drawn inline SVG icons. No icon font, no emoji, 1.4 px hairlines. */
 
 interface IconProps {
@@ -63,7 +64,7 @@ export function IconVolume({ size = 14, muted = false, className }: IconProps & 
   return (
     <svg {...base(size)} className={className}>
       <path d="M3 6.2h2.2L8 3.6v8.8L5.2 9.8H3V6.2z" fill="currentColor" />
-      {muted ? (
+      {t(muted ? (
         <path d="M10.4 6.2l3 3.6M13.4 6.2l-3 3.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       ) : (
         <path
@@ -72,7 +73,7 @@ export function IconVolume({ size = 14, muted = false, className }: IconProps & 
           strokeWidth="1.15"
           strokeLinecap="round"
         />
-      )}
+      ))}
     </svg>
   );
 }

@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 /**
  * The theme editor window's root — SPEC §20.
  *
@@ -51,6 +52,7 @@ import {
 } from "../lib/theme";
 
 export default function ThemeWindow() {
+  useLanguage();
   const snapshot = useStore((s) => s.snapshot);
   const pushToast = useStore((s) => s.pushToast);
   const connected = snapshot != null;
@@ -107,14 +109,11 @@ export default function ThemeWindow() {
   return (
     <div className="theme-window">
       <div className="tw-head">
-        <span className="tw-title">Theme</span>
-        <span className="tw-state">
-          in force: <b>{inForce ?? "Onyx (designed)"}</b> · {look.theme} · {look.accent}
+        <span className="tw-title">{t("Theme")}</span>
+        <span className="tw-state">{t("in force:")}<b>{t(inForce ?? "Onyx (designed)")}</b> · {t(look.theme)} · {t(look.accent)}
         </span>
         <span className="spacer" />
-        <span className="tw-state">
-          this window is never re-skinned by the document it is editing
-        </span>
+        <span className="tw-state">{t("this window is never re-skinned by the document it is editing")}</span>
       </div>
 
       <div className="tw-body">
@@ -122,7 +121,7 @@ export default function ThemeWindow() {
       </div>
 
       <Toasts />
-      {!connected && <div className="connecting">connecting to engine</div>}
+      {t(!connected && <div className="connecting">{t("connecting to engine")}</div>)}
     </div>
   );
 }

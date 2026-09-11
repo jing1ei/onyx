@@ -39,6 +39,22 @@ use crate::themewindow;
 type Res<T> = Result<T, String>;
 type St<'a> = State<'a, Arc<AppState>>;
 
+#[tauri::command]
+pub async fn editor_io(app: AppHandle, request: crate::editor::Request) -> Res<tauri::ipc::Response> {
+    let started = std::time::Instant::now();
+    let action = request.action.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        if request.action == "read" { return crate::editor::read_chunk(&app, request).map(tauri::ipc::Response::new); }
+        let reply = crate::editor::handle(&app, request)?;
+        serde_json::to_string(&reply).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+    })
+        .await.map_err(|e| e.to_string())?;
+    if started.elapsed().as_millis() >= 100 {
+        log::warn!("Slow editor_io action={} elapsed_ms={}", action, started.elapsed().as_millis());
+    }
+    result
+}
+
 /* ── app / playlist ──────────────────────────────────────────────────────── */
 
 #[tauri::command]
@@ -61,11 +77,11 @@ pub async fn pick_and_open_files(app: AppHandle, state: St<'_>, replace: bool) -
     app.dialog()
         .file()
         .set_title(if replace {
-            "Open audio"
+            crate::editor::label("Open audio", "打开音频")
         } else {
-            "Add to playlist"
+            crate::editor::label("Add to playlist", "添加到播放列表")
         })
-        .add_filter("Audio", &openable_extensions())
+        .add_filter(crate::editor::label("Audio", "音频"), &openable_extensions())
         .pick_files(move |picked| {
             let _ = tx.send(picked);
         });

@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useStore } from "../lib/store";
 
 export default function Toasts() {
@@ -8,12 +9,12 @@ export default function Toasts() {
 
   return (
     <div className="toasts">
-      {toasts.map((t) => (
-        <div key={t.id} className="toast" data-kind={t.kind} onClick={() => dismiss(t.id)}>
+      {t(toasts.map((toast) => (
+        <div key={toast.id} className="toast" data-kind={toast.kind} onClick={() => dismiss(toast.id)}>
           <i />
-          <span>{t.message}</span>
+          <span>{t(toast.message)}</span>
         </div>
-      ))}
+      )))}
     </div>
   );
 }

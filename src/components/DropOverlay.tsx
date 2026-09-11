@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { IconWave } from "./Icons";
 
@@ -9,11 +10,11 @@ export default function DropOverlay() {
     <div className="drop-overlay">
       <div className="drop-frame">
         <IconWave size={26} />
-        <strong>{empty ? "Drop to play" : "Drop to append"}</strong>
+        <strong>{t(empty ? "Drop to play" : "Drop to append")}</strong>
         <span>
-          {(snapshot?.supportedExtensions ?? ["flac", "wav", "aiff", "mp3", "m4a", "ogg"])
+          {t((snapshot?.supportedExtensions ?? ["flac", "wav", "aiff", "mp3", "m4a", "ogg"])
             .slice(0, 8)
-            .join(" · ")}
+            .join(" · "))}
         </span>
       </div>
     </div>

@@ -280,6 +280,7 @@ pub struct ToastPayload {
 }
 
 pub struct AppState {
+    pub editor_previews: Mutex<std::collections::HashMap<std::path::PathBuf, std::sync::Arc<crate::editor::Preview>>>,
     pub engine: Arc<AudioEngine>,
     pub playlist: Mutex<Playlist>,
     /// Index 0 = deck A, 1 = deck B (see [`Deck::index`]).
@@ -330,6 +331,7 @@ impl AppState {
             crossfade_ms: settings.crossfade_ms,
         };
         AppState {
+            editor_previews: Mutex::new(std::collections::HashMap::new()),
             engine,
             playlist: Mutex::new(Playlist::default()),
             decks: Mutex::new([DeckSlot::default(), DeckSlot::default()]),

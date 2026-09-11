@@ -32,6 +32,9 @@ mod blind;
 mod cache;
 mod clientlog;
 mod commands;
+mod editor;
+mod editor_cache;
+mod editor_wav;
 mod eqwindow;
 mod frame;
 mod loader;
@@ -417,8 +420,11 @@ pub fn run() {
         // and the dialog plugin only consults the fs scope from its own
         // webview commands, which are not reachable here.
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .manage(editor::EditorState::default())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            commands::editor_io,
             commands::app_state,
             commands::open_files,
             commands::pick_and_open_files,
