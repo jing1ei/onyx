@@ -60,5 +60,4 @@ release-unified/
 /CODEX_HANDOFF.zh-CN.md
 /LOCAL_EDITOR_README.zh-CN.md
 /MIGRATION_REQUIREMENTS.zh-CN.md
-/scripts/build-editor-local.ps1
 /scripts/test-editor-import.mjs

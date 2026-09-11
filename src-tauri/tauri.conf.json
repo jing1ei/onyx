@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Onyx",
+  "productName": "Onyx Branch",
   "version": "1.0.0",
   "identifier": "com.onyxaudio.unified",
   "build": {
@@ -103,6 +103,9 @@
       }
     ],
     "resources": {
+      "../LICENSE": "LICENSE.txt",
+      "../THIRD-PARTY.md": "THIRD-PARTY.md",
+      "../WINDOWS_RELEASE.zh-CN.md": "WINDOWS_RELEASE.zh-CN.md",
       "../crates/onyx-core/assets/gm/GeneralUser-GS-LICENSE.txt": "GeneralUser-GS-LICENSE.txt"
     },
     "macOS": {

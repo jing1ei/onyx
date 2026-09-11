@@ -10,6 +10,8 @@
 
 ## 构建和验证修改版
 
+Windows EXE 和安装包见 [Releases](https://github.com/MoeCici/Onyx_Branch/releases)。运行依赖和验证范围见 [Windows 发行说明](WINDOWS_RELEASE.zh-CN.md)。需要安装包时运行 `./scripts/build-editor-local.ps1 -Installer -OutputDirectory '.tools/windows-release'`。
+
 需要 Node.js、Rust、对应平台的 Tauri 构建依赖。Windows 使用 MSVC 工具链和 WebView2。FFmpeg / FFprobe 需放在 PATH 或程序旁；仓库不附带这些可执行文件。
 
 ```powershell
