@@ -12,7 +12,7 @@
 
 Windows EXE 和安装包见 [Releases](https://github.com/MoeCici/Onyx_Branch/releases)。运行依赖和验证范围见 [Windows 发行说明](WINDOWS_RELEASE.zh-CN.md)。需要安装包时运行 `./scripts/build-editor-local.ps1 -Installer -OutputDirectory '.tools/windows-release'`。
 
-需要 Node.js、Rust、对应平台的 Tauri 构建依赖。Windows 使用 MSVC 工具链和 WebView2。FFmpeg / FFprobe 需放在 PATH 或程序旁；仓库不附带这些可执行文件。
+需要 Node.js、Rust、对应平台的 Tauri 构建依赖。Windows 使用 MSVC 工具链和 WebView2。发布的安装包和完整便携 ZIP 已包含 FFmpeg/FFprobe。源码仓库不直接存储大体积 EXE；Windows 构建前，从 [Gyan 官方归档](https://github.com/GyanD/codexffmpeg/releases/download/8.0/ffmpeg-8.0-full_build.7z) 获取 FFmpeg 8.0 full build，运行 `./scripts/prepare-ffmpeg.ps1 -FFmpegDirectory '<解压目录>'`，脚本会校验固定版本哈希。
 
 ```powershell
 npm ci

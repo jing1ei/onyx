@@ -61,3 +61,4 @@ release-unified/
 /LOCAL_EDITOR_README.zh-CN.md
 /MIGRATION_REQUIREMENTS.zh-CN.md
 /scripts/test-editor-import.mjs
+/vendor/ffmpeg/bin/

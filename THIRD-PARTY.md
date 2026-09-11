@@ -1,5 +1,9 @@
 # Third-party components bundled with Onyx
 
+## FFmpeg 8.0 / FFprobe — Windows audio conversion tools
+
+Windows installer and portable distributions include Gyan's unmodified GPLv3 FFmpeg 8.0 full-build executables. See [FFmpeg notice](vendor/ffmpeg/NOTICE.md), [license](vendor/ffmpeg/LICENSE-GPLv3.txt), and [upstream build information](vendor/ffmpeg/UPSTREAM-README.txt). Onyx invokes these as external processes. A matching FFmpeg source archive is available alongside the binary downloads in Releases.
+
 Everything Onyx ships that was not written for Onyx, with the licence it
 travels under. Dependencies pulled from crates.io / npm are recorded in
 `Cargo.lock` and `package-lock.json`; this file covers the ones that need a

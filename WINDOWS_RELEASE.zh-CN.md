@@ -4,7 +4,9 @@
 
 支持 Windows 10/11 x64，需要 Microsoft Edge WebView2 Runtime。安装包按当前用户安装，不需要修改音频驱动；便携版解压后运行 Onyx.exe。
 
-保存音频及部分格式导入需要 FFmpeg 和 FFprobe：将 ffmpeg.exe、ffprobe.exe 放到 Onyx.exe 所在目录，或加入 PATH。下载来源见 https://ffmpeg.org/download.html 。本发行包未捆绑这两个工具。
+安装包和完整便携 ZIP 已附带 FFmpeg 8.0 / FFprobe，安装或完整解压后即可保存音频，无需另外配置 PATH。请保留程序旁的 ffmpeg.exe 和 ffprobe.exe。单独下载 Onyx 主程序 EXE 不含这两个外部工具，优先下载完整便携 ZIP。
+
+FFmpeg 工具遵循 GPLv3，随包提供原始许可、构建说明和 FFmpeg-NOTICE.md；对应 FFmpeg 源码作为同一 Release 的独立附件提供。
 
 程序和安装包未作代码签名。已验证发布构建和无声测试；没有为本次发行运行安装程序或进行真实声卡播放测试。
 
