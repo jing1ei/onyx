@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 /**
  * The detached EQ window's root — SPEC §12.
  *
@@ -31,6 +32,7 @@ import EqPanel from "../components/EqPanel";
 import Toasts from "../components/Toasts";
 
 export default function EqWindow() {
+  useLanguage();
   const connected = useStore((s) => s.snapshot != null);
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function EqWindow() {
     <div className="eq-window">
       <EqPanel />
       <Toasts />
-      {!connected && <div className="connecting">connecting to engine</div>}
+      {t(!connected && <div className="connecting">{t("connecting to engine")}</div>)}
     </div>
   );
 }

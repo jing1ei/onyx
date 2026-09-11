@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useRef } from "react";
 import * as api from "../lib/api";
 import { setAttr, setStyle, setText } from "../lib/dom";
@@ -129,8 +130,8 @@ export default function TransportBar() {
             if (blindLocked("Changing track")) return;
             api.playlistPrev().then(setSnapshot).catch(fail);
           }}
-          title="Previous"
-          aria-label="Previous track"
+          title={t("Previous")}
+          aria-label={t("Previous track")}
         >
           <IconPrev />
         </button>
@@ -139,8 +140,8 @@ export default function TransportBar() {
           ref={playBtn}
           data-playing="false"
           onClick={() => api.transportToggle().catch(fail)}
-          title="Play / pause (Space)"
-          aria-label="Play or pause"
+          title={t("Play / pause (Space)")}
+          aria-label={t("Play or pause")}
         >
           <span className="i-play">
             <IconPlay size={15} />
@@ -155,8 +156,8 @@ export default function TransportBar() {
             if (blindLocked("Changing track")) return;
             api.playlistNext().then(setSnapshot).catch(fail);
           }}
-          title="Next"
-          aria-label="Next track"
+          title={t("Next")}
+          aria-label={t("Next track")}
         >
           <IconNext />
         </button>
@@ -180,11 +181,11 @@ export default function TransportBar() {
           const on = frameRef.current?.transport.loopEnabled ?? false;
           void api.setLoopEnabled(!on).catch(fail);
         }}
-        title="Loop (L) — shift-drag the waveform to set a region"
+        title={t("Loop (L) — shift-drag the waveform to set a region")}
       >
         <IconLoop size={12} />
         {/* the word goes before the icon does when the window gets narrow */}
-        <span className="tr-word">Loop</span>
+        <span className="tr-word">{t("Loop")}</span>
       </button>
 
       <MonitorControl />
@@ -200,8 +201,8 @@ export default function TransportBar() {
             const muted = frameRef.current?.transport.muted ?? false;
             void api.setMuted(!muted).catch(fail);
           }}
-          title="Mute (M)"
-          aria-label="Mute"
+          title={t("Mute (M)")}
+          aria-label={t("Mute")}
         >
           <IconVolume size={14} />
         </button>
@@ -212,14 +213,12 @@ export default function TransportBar() {
             volDrag.current = true;
             setVolumeFromEvent(e.clientX);
           }}
-          title="Volume (↑ / ↓)"
+          title={t("Volume (↑ / ↓)")}
         >
           <div className="vol-fill" ref={volFill} style={{ width: "80%" }} />
           <div className="vol-knob" ref={volKnob} style={{ left: "80%" }} />
         </div>
-        <span className="vol-db num" ref={volDb}>
-          0.0 dB
-        </span>
+        <span className="vol-db num" ref={volDb}>{t("0.0 dB")}</span>
       </div>
 
       <div className="ab-cluster">
@@ -228,25 +227,23 @@ export default function TransportBar() {
           data-on={abEnabled}
           disabled={blindActive}
           onClick={() => api.abSetEnabled(!abEnabled).then(setSnapshot).catch(fail)}
-          title={blindActive ? "Finish or abort the blind test first" : "Enable A/B comparison"}
-        >
-          A/B
-        </button>
+          title={t(blindActive ? "Finish or abort the blind test first" : "Enable A/B comparison")}
+        >{t("A/B")}</button>
 
-        {blindActive ? (
+        {t(blindActive ? (
           // identity stays hidden: these are blind slots, never decks, and they
           // are rendered in `blind.slots` order so the DOM leaks nothing either
           <div className="seg" data-blind="true">
-            {blindSlots.map((slot) => (
+            {t(blindSlots.map((slot) => (
               <button
                 key={slot}
                 data-on={blind?.currentSlot === slot}
                 onClick={() => api.blindSwitch(slot).catch(fail)}
-                title={`Slot ${slot.toUpperCase()}`}
+                title={t(`Slot ${slot.toUpperCase()}`)}
               >
-                {slot.toUpperCase()}
+                {t(slot.toUpperCase())}
               </button>
-            ))}
+            )))}
           </div>
         ) : (
           <div className="seg">
@@ -256,29 +253,25 @@ export default function TransportBar() {
               data-on="true"
               disabled={!abEnabled}
               onClick={() => api.abSelect("a").catch(fail)}
-              title="Deck A (A)"
-            >
-              A
-            </button>
+              title={t("Deck A (A)")}
+            >{t("A")}</button>
             <button
               ref={deckBBtn}
               data-deck="b"
               data-on="false"
               disabled={!abEnabled}
               onClick={() => api.abSelect("b").catch(fail)}
-              title="Deck B (B)"
-            >
-              B
-            </button>
+              title={t("Deck B (B)")}
+            >{t("B")}</button>
           </div>
-        )}
+        ))}
 
-        <span className="tr-trim num" ref={trimEl} hidden={!showTrim} title="Level-match trim on the audible deck" />
+        <span className="tr-trim num" ref={trimEl} hidden={!showTrim} title={t("Level-match trim on the audible deck")} />
 
         <div className="xfade">
-          <span className="label">Xfade</span>
+          <span className="label">{t("Xfade")}</span>
           <div className="xfade-opts">
-            {CROSSFADES.map((ms) => (
+            {t(CROSSFADES.map((ms) => (
               <button
                 key={ms}
                 className="num"
@@ -286,9 +279,9 @@ export default function TransportBar() {
                 disabled={!abEnabled || blindActive}
                 onClick={() => api.abSetCrossfadeMs(ms).catch(fail)}
               >
-                {ms}
+                {t(ms)}
               </button>
-            ))}
+            )))}
           </div>
         </div>
 
@@ -298,10 +291,10 @@ export default function TransportBar() {
           data-on={blindActive || blindOpen}
           disabled={!abEnabled || !bothLoaded}
           onClick={() => setBlindOpen(true)}
-          title="Blind A/B or ABX test"
+          title={t("Blind A/B or ABX test")}
         >
           <IconBlind size={12} />
-          <span className="tr-word">Blind</span>
+          <span className="tr-word">{t("Blind")}</span>
         </button>
       </div>
     </footer>

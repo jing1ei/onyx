@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../lib/api";
 import { setAttr, setStyle, setText } from "../lib/dom";
@@ -411,9 +412,9 @@ export default function SettingsPanel() {
   return (
     <div className="float-panel right settings">
       <div className="panel-head">
-        <span className="panel-title">Settings</span>
+        <span className="panel-title">{t("Settings")}</span>
         <span className="spacer" />
-        <button className="close-btn" onClick={() => setSettingsOpen(false)} aria-label="Close">
+        <button className="close-btn" onClick={() => setSettingsOpen(false)} aria-label={t("Close")}>
           <IconClose />
         </button>
       </div>
@@ -421,12 +422,10 @@ export default function SettingsPanel() {
       {/* ── appearance (SPEC §15/§20) ─────────────────────────────── */}
       <div className="set-sec">
         <div className="set-sec-head">
-          <span className="set-sec-title">Appearance</span>
-          {(modified || themeDoc) && (
-            <span className="set-chip" title="These settings differ from the defaults">
-              modified
-            </span>
-          )}
+          <span className="set-sec-title">{t("Appearance")}</span>
+          {t((modified || themeDoc) && (
+            <span className="set-chip" title={t("These settings differ from the defaults")}>{t("modified")}</span>
+          ))}
           <span className="spacer" />
           <button
             className="ghost-btn"
@@ -440,89 +439,79 @@ export default function SettingsPanel() {
               setHex(DEFAULT_APPEARANCE.accent);
               resetAppearanceEverywhere();
             }}
-            title="Back to obsidian, champagne, system fonts, normal size and no theme document"
-          >
-            Reset
-          </button>
+            title={t("Back to obsidian, champagne, system fonts, normal size and no theme document")}
+          >{t("Reset")}</button>
         </div>
 
         {/* Its own row: two labels and a Reset do not fit on the title line in
             a 360 px column, and a tab strip that wraps is worse than one that
             has a line to itself. */}
-        <div className="set-tabs seg" role="tablist" aria-label="How to change the appearance">
+        <div className="set-tabs seg" role="tablist" aria-label={t("How to change the appearance")}>
           <button
             role="tab"
             aria-selected={lookTab === "code"}
             data-on={lookTab === "code"}
             onClick={() => setLookTab("code")}
-            title="The theme document — copy it, hand it to an agent, paste the reply back"
-          >
-            Theme code
-          </button>
+            title={t("The theme document — copy it, hand it to an agent, paste the reply back")}
+          >{t("Theme code")}</button>
           <button
             role="tab"
             aria-selected={lookTab === "simple"}
             data-on={lookTab === "simple"}
             onClick={() => setLookTab("simple")}
-            title="Theme, accent, fonts and size, one control each"
-          >
-            Simple
-          </button>
+            title={t("Theme, accent, fonts and size, one control each")}
+          >{t("Simple")}</button>
         </div>
 
-        {lookTab === "code" ? (
+        {t(lookTab === "code" ? (
           <div className="field col">
             <div className="set-row">
               <div>
-                <div className="k">Theme document</div>
-                <div className="sub">
-                  Copy default &rarr; paste into a chat &rarr; paste the reply back
-                </div>
+                <div className="k">{t("Theme document")}</div>
+                <div className="sub">{t("Copy default &rarr; paste into a chat &rarr; paste the reply back")}</div>
               </div>
               <button
                 className="ghost-btn"
                 onClick={openThemeWindow}
-                title="Open the editor in its own window, which keeps working if a theme makes this one unreadable"
-              >
-                Open window
-              </button>
+                title={t("Open the editor in its own window, which keeps working if a theme makes this one unreadable")}
+              >{t("Open window")}</button>
             </div>
             <ThemeEditor compact />
           </div>
         ) : (
           <>
             <div className="field">
-              <span className="k">Theme</span>
+              <span className="k">{t("Theme")}</span>
               <div className="seg">
-                {THEMES.map((t) => (
+                {t(THEMES.map((theme) => (
                   <button
-                    key={t.value}
-                    data-on={look.theme === t.value}
-                    onClick={() => change({ theme: t.value })}
+                    key={theme.value}
+                    data-on={look.theme === theme.value}
+                    onClick={() => change({ theme: theme.value })}
                   >
-                    {t.label}
+                    {t(theme.label)}
                   </button>
-                ))}
+                )))}
               </div>
             </div>
 
             <div className="field col">
               <div className="set-row">
                 <div>
-                  <div className="k">Accent</div>
-                  <div className="sub">Hover, pressed and dim states are derived from it</div>
+                  <div className="k">{t("Accent")}</div>
+                  <div className="sub">{t("Hover, pressed and dim states are derived from it")}</div>
                 </div>
                 <span className="set-swatch big" style={{ background: look.accent }} />
               </div>
               <div className="set-swatches">
-                {ACCENTS.map((a) => (
+                {t(ACCENTS.map((a) => (
                   <button
                     key={a.hex}
                     className="set-swatch"
                     style={{ background: a.hex }}
                     data-on={look.accent === a.hex}
-                    title={`${a.name} \u00B7 ${a.hex}`}
-                    aria-label={a.name}
+                    title={t(`${a.name} \u00B7 ${a.hex}`)}
+                    aria-label={t(a.name)}
                     aria-pressed={look.accent === a.hex}
                     onClick={() => {
                       setHexBad(false);
@@ -530,7 +519,7 @@ export default function SettingsPanel() {
                       change({ accent: a.hex });
                     }}
                   />
-                ))}
+                )))}
                 {/* The free field. `maxLength` is generous on purpose: it has to
                     hold whatever was pasted by mistake so the rejection can quote
                     it back rather than quote a truncation of it. */}
@@ -539,7 +528,7 @@ export default function SettingsPanel() {
                   value={hex}
                   spellCheck={false}
                   maxLength={16}
-                  aria-label="Accent colour, as hex"
+                  aria-label={t("Accent colour, as hex")}
                   aria-invalid={hexBad}
                   data-bad={hexBad}
                   onChange={(e) => {
@@ -557,34 +546,32 @@ export default function SettingsPanel() {
                   onBlur={(e) => commitHex(e.target.value)}
                 />
               </div>
-              {hexBad && (
-                <div className="set-error">
-                  &ldquo;{hex}&rdquo; is not a colour &mdash; use #rrggbb
-                </div>
-              )}
+              {t(hexBad && (
+                <div className="set-error">{t("&ldquo;")}{t(hex)}{t("&rdquo; is not a colour &mdash; use #rrggbb")}</div>
+              ))}
             </div>
 
             <div className="field">
-              <span className="k">Interface font</span>
+              <span className="k">{t("Interface font")}</span>
               <select
                 className="select"
                 data-set="ui-font"
                 value={look.uiFont}
                 onChange={(e) => change({ uiFont: e.target.value })}
               >
-                {UI_FONTS.map((f) => (
+                {t(UI_FONTS.map((f) => (
                   <option key={f.token} value={f.token}>
-                    {f.label}
+                    {t(f.label)}
                   </option>
-                ))}
+                )))}
               </select>
             </div>
 
             <div className="field col">
               <div className="set-row">
                 <div>
-                  <div className="k">Read-out font</div>
-                  <div className="sub">Monospaced only &mdash; LUFS, timecode and dB are tabular</div>
+                  <div className="k">{t("Read-out font")}</div>
+                  <div className="sub">{t("Monospaced only &mdash; LUFS, timecode and dB are tabular")}</div>
                 </div>
                 <select
                   className="select"
@@ -592,70 +579,67 @@ export default function SettingsPanel() {
                   value={look.numericFont}
                   onChange={(e) => change({ numericFont: e.target.value })}
                 >
-                  {NUM_FONTS.map((f) => (
+                  {t(NUM_FONTS.map((f) => (
                     <option key={f.token} value={f.token}>
-                      {f.label}
+                      {t(f.label)}
                     </option>
-                  ))}
+                  )))}
                 </select>
               </div>
               {/* Two rows of the same width: a proportional face would visibly
                   stagger them, which is the whole argument for this restriction. */}
               <div className="set-sample num">
-                <span>{"\u221214.2 LUFS"}</span>
+                <span>{t("\u221214.2 LUFS")}</span>
                 <span>0:41.70</span>
-                <span>96.0 kHz</span>
+                <span>{t("96.0 kHz")}</span>
               </div>
               <div className="set-sample num">
-                <span>{"\u22128.7 LUFS"}</span>
+                <span>{t("\u22128.7 LUFS")}</span>
                 <span>1:08.05</span>
-                <span>44.1 kHz</span>
+                <span>{t("44.1 kHz")}</span>
               </div>
             </div>
 
             <div className="field">
-              <span className="k">Size</span>
+              <span className="k">{t("Size")}</span>
               <div className="seg">
-                {SCALES.map((s) => (
+                {t(SCALES.map((s) => (
                   <button
                     key={s.value}
                     data-on={look.sizeScale === s.value}
                     onClick={() => change({ sizeScale: s.value })}
                   >
-                    {s.label}
+                    {t(s.label)}
                   </button>
-                ))}
+                )))}
               </div>
             </div>
 
             {/* A document in force overrides these controls wherever the two
                 overlap, and saying so is cheaper than a user wondering why the
                 accent swatch does nothing. */}
-            {themeDoc && (
-              <div className="set-note">
-                A theme document is in force. It overrides these where they overlap
-                &mdash; edit it under <b>Theme code</b>, or Reset to clear it.
-              </div>
-            )}
+            {t(themeDoc && (
+              <div className="set-note">{t("A theme document is in force. It overrides these where they overlap &mdash; edit it under")}<b>{t("Theme code")}</b>{t(", or Reset to clear it.")}</div>
+            ))}
           </>
-        )}
+        ))}
       </div>
 
       {/* ── engine source (SPEC §16) ──────────────────────────────── */}
       <div className="set-sec">
         <div className="set-sec-head">
-          <span className="set-sec-title">Engine source</span>
+          <span className="set-sec-title">{t("Engine source")}</span>
           <span className="spacer" />
-          {busy && <span className="set-chip quiet">rebuilding</span>}
+          {t(busy && <span className="set-chip quiet">{t("rebuilding")}</span>)}
         </div>
 
-        {audioError && <div className="set-error">Could not read the audio source: {audioError}</div>}
+        {t(audioError && <div className="set-error">{t("Could not read the audio source: ")}{t(audioError)}</div>)}
 
         <div className="field">
           <div>
-            <div className="k">Audio API</div>
+            <div className="k">{t("Audio API")}</div>
             <div className="sub">
-              {hosts.length === 0 ? "no audio API available" : `${hosts.length} available`}
+              {t(hosts.length === 0 ? "no audio API available" : `${hosts.length} available`)}
             </div>
           </div>
           <select
@@ -665,27 +649,27 @@ export default function SettingsPanel() {
             disabled={hosts.length === 0}
             onChange={(e) => chooseHost(e.target.value)}
           >
-            {hosts.length === 0 && <option value="">None</option>}
-            {hosts.map((h) => (
+            {t(hosts.length === 0 && <option value="">{t("None")}</option>)}
+            {t(hosts.map((h) => (
               <option key={h.id} value={h.id} disabled={!h.available}>
-                {h.name}
-                {h.available ? "" : " (unavailable)"}
+                {t(h.name)}
+                {t(h.available ? "" : " (unavailable)")}
               </option>
-            ))}
+            )))}
           </select>
         </div>
 
         <div className="field">
           <div>
-            <div className="k">Output device</div>
+            <div className="k">{t("Output device")}</div>
             <div className="sub">
-              {devices.length === 0
+              {t(devices.length === 0
                 ? hostSel
                   ? "no output devices on this API"
                   : "nothing to enumerate"
                 : dev?.followingSystemDefault
                   ? `system default \u00B7 ${dev.current ?? "\u2014"}`
-                  : `${devices.length} available`}
+                  : `${devices.length} available`)}
             </div>
           </div>
           <select
@@ -701,21 +685,21 @@ export default function SettingsPanel() {
               )
             }
           >
-            <option value="">System default</option>
-            {devices.map((d) => (
+            <option value="">{t("System default")}</option>
+            {t(devices.map((d) => (
               <option key={d.name} value={d.name}>
-                {d.name}
-                {d.isDefault ? " (default)" : ""}
+                {t(d.name)}
+                {t(d.isDefault ? " (default)" : "")}
               </option>
-            ))}
+            )))}
           </select>
         </div>
 
         <div className="field">
           <div>
-            <div className="k">Sample rate</div>
+            <div className="k">{t("Sample rate")}</div>
             <div className="sub">
-              {following ? "follows deck A \u00B7 stays bit-transparent" : "fixed \u00B7 resamples"}
+              {t(following ? "follows deck A \u00B7 stays bit-transparent" : "fixed \u00B7 resamples")}
             </div>
           </div>
           <select
@@ -731,28 +715,28 @@ export default function SettingsPanel() {
               )
             }
           >
-            <option value="follow">Follow source</option>
-            {rates.map((r) => (
+            <option value="follow">{t("Follow source")}</option>
+            {t(rates.map((r) => (
               <option key={r} value={r}>
-                {formatSampleRate(r)}
+                {t(formatSampleRate(r))}
               </option>
-            ))}
+            )))}
           </select>
         </div>
 
         <div className="field">
           <div>
-            <div className="k">Buffer size</div>
+            <div className="k">{t("Buffer size")}</div>
             <div className="sub">
-              {devices.length === 0
+              {t(devices.length === 0
                 ? "no device to ask"
                 : buffers.length === 0
                   ? "the driver chooses its own"
-                  : `${buffers[0]}\u2013${buffers[buffers.length - 1]} frames on this device`}
+                  : `${buffers[0]}\u2013${buffers[buffers.length - 1]} frames on this device`)}
             </div>
           </div>
-          {buffers.length === 0 ? (
-            <span className="v num">{dev?.bufferFrames ?? "\u2014"}</span>
+          {t(buffers.length === 0 ? (
+            <span className="v num">{t(dev?.bufferFrames ?? "\u2014")}</span>
           ) : (
             <select
               className="select"
@@ -760,124 +744,108 @@ export default function SettingsPanel() {
               value={String(dev?.bufferFrames ?? "")}
               onChange={(e) => applySource({ bufferFrames: Number(e.target.value) })}
             >
-              {dev?.bufferFrames == null && <option value="">Driver default</option>}
-              {buffers.map((n) => (
+              {t(dev?.bufferFrames == null && <option value="">{t("Driver default")}</option>)}
+              {t(buffers.map((n) => (
                 <option key={n} value={n}>
-                  {`${n} \u00B7 ${latencyOf(n, rate).toFixed(1)} ms`}
+                  {t(`${n} \u00B7 ${latencyOf(n, rate).toFixed(1)} ms`)}
                 </option>
-              ))}
+              )))}
             </select>
-          )}
+          ))}
         </div>
 
         {/* The number the buffer size is *for*: frames are what the driver
             takes, milliseconds are what a player hears, and this one follows
             the engine's rate rather than the device's nominal one. */}
         <div className="field">
-          <span className="k">Output latency</span>
-          <span className="v num">{formatMs(dev?.latencyMs ?? null)}</span>
+          <span className="k">{t("Output latency")}</span>
+          <span className="v num">{t(formatMs(dev?.latencyMs ?? null))}</span>
         </div>
 
         <div className="field">
-          <span className="k">Engine sample rate</span>
-          <span className="v num" ref={rateEl}>
-            &mdash;
-          </span>
+          <span className="k">{t("Engine sample rate")}</span>
+          <span className="v num" ref={rateEl}>{t("&mdash;")}</span>
         </div>
 
         <div className="field">
-          <span className="k">Output underruns</span>
+          <span className="k">{t("Output underruns")}</span>
           <span className="v num" ref={underEl} data-tone="">
             0
           </span>
         </div>
 
         <div className="field">
-          <span className="k">Bit-transparent</span>
-          <span className="v num" ref={transEl}>
-            &mdash;
-          </span>
+          <span className="k">{t("Bit-transparent")}</span>
+          <span className="v num" ref={transEl}>{t("&mdash;")}</span>
         </div>
 
-        <div className="set-note">
-          Bit-transparent means engine rate equals the source rate with EQ bypassed, unity volume
-          and no match trim applied.
-        </div>
+        <div className="set-note">{t("Bit-transparent means engine rate equals the source rate with EQ bypassed, unity volume and no match trim applied.")}</div>
       </div>
 
       {/* ── the General MIDI bank (SPEC §18) ──────────────────────── */}
       <div className="set-sec">
         <div className="set-sec-head">
-          <span className="set-sec-title">MIDI</span>
+          <span className="set-sec-title">{t("MIDI")}</span>
           <span className="spacer" />
-          <span className="set-chip quiet">{bank?.bundled === false ? "user bank" : "bundled"}</span>
+          <span className="set-chip quiet">{t(bank?.bundled === false ? "user bank" : "bundled")}</span>
         </div>
 
         <div className="field col">
           <div className="set-row">
             <div>
-              <div className="k">General MIDI bank</div>
-              <div className="sub">.mid files are rendered through this SoundFont</div>
+              <div className="k">{t("General MIDI bank")}</div>
+              <div className="sub">{t(".mid files are rendered through this SoundFont")}</div>
             </div>
           </div>
           <div className="set-bank">
-            <span className="set-bank-name num" title={bank?.path ?? "bundled with Onyx"}>
-              {bank ? bank.name : "\u2014"}
+            <span className="set-bank-name num" title={t(bank?.path ?? "bundled with Onyx")}>
+              {t(bank ? bank.name : "\u2014")}
             </span>
-            <button className="ghost-btn" onClick={chooseBank}>
-              Choose .sf2
-            </button>
-            <button className="ghost-btn" disabled={bank?.bundled !== false} onClick={useBundledBank}>
-              Bundled
-            </button>
+            <button className="ghost-btn" onClick={chooseBank}>{t("Choose .sf2")}</button>
+            <button className="ghost-btn" disabled={bank?.bundled !== false} onClick={useBundledBank}>{t("Bundled")}</button>
           </div>
-          {bankError && <div className="set-error">{bankError}</div>}
+          {t(bankError && <div className="set-error">{t(bankError)}</div>)}
         </div>
       </div>
 
       {/* ── loudness cache (SPEC §8) ─────────────────────────────────── */}
       <div className="set-sec">
         <div className="set-sec-head">
-          <span className="set-sec-title">Loudness cache</span>
+          <span className="set-sec-title">{t("Loudness cache")}</span>
           <span className="spacer" />
         </div>
 
         <div className="field">
-          <span className="k">Entries</span>
-          <span className="v num">{cache ? cache.entries.toLocaleString() : "\u2014"}</span>
+          <span className="k">{t("Entries")}</span>
+          <span className="v num">{t(cache ? cache.entries.toLocaleString() : "\u2014")}</span>
         </div>
         <div className="field">
-          <span className="k">On disk</span>
-          <span className="v num">{cache ? formatBytes(cache.bytes) : "\u2014"}</span>
+          <span className="k">{t("On disk")}</span>
+          <span className="v num">{t(cache ? formatBytes(cache.bytes) : "\u2014")}</span>
         </div>
         <div className="field cache-path">
-          <span className="k">File</span>
-          <span className="v num path" title={cache?.path ?? ""}>
-            {cache ? elidePath(cache.path) : "\u2014"}
+          <span className="k">{t("File")}</span>
+          <span className="v num path" title={t(cache?.path ?? "")}>
+            {t(cache ? elidePath(cache.path) : "\u2014")}
           </span>
         </div>
 
-        {cacheError && (
-          <div className="set-error">Cache unavailable: {cacheError}</div>
-        )}
+        {t(cacheError && (
+          <div className="set-error">{t("Cache unavailable: ")}{t(cacheError)}</div>
+        ))}
 
         <div className="cache-actions">
-          <span className="set-note">
-            Integrated LUFS, LRA and true peak for files you have already played. Waveform peaks are
-            not cached.
-          </span>
-          {confirmClear ? (
+          <span className="set-note">{t("Integrated LUFS, LRA and true peak for files you have already played. Waveform peaks are not cached.")}</span>
+          {t(confirmClear ? (
             <div className="confirm-pair">
-              <button className="ghost-btn" onClick={() => setConfirmClear(false)}>
-                Keep
-              </button>
+              <button className="ghost-btn" onClick={() => setConfirmClear(false)}>{t("Keep")}</button>
               <button
                 className="ghost-btn danger"
                 disabled={clearing}
                 onClick={clearCache}
-                title="Every entry is discarded; loudness is re-measured on the next play"
+                title={t("Every entry is discarded; loudness is re-measured on the next play")}
               >
-                {clearing ? "Clearing" : "Confirm"}
+                {t(clearing ? "Clearing" : "Confirm")}
               </button>
             </div>
           ) : (
@@ -885,10 +853,8 @@ export default function SettingsPanel() {
               className="ghost-btn"
               disabled={cache == null || cache.entries === 0}
               onClick={() => setConfirmClear(true)}
-            >
-              Clear
-            </button>
-          )}
+            >{t("Clear")}</button>
+          ))}
         </div>
       </div>
     </div>

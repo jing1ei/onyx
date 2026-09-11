@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * Blind testing — 2AFC (`ab`) and ABX (`abx`), SPEC.md §7.
  *
@@ -102,16 +103,15 @@ export default function BlindTest() {
     <div className="float-panel blind">
       <div className="panel-head">
         <span className="panel-title">
-          {runningMode === "abx" ? "ABX test" : "Blind A / B"}
+          {t(runningMode === "abx" ? "ABX test" : "Blind A / B")}
         </span>
         <span className="spacer" />
-        {active ? (
-          <span className="label num">
-            Trial {trial} / {totalTrials}
+        {t(active ? (
+          <span className="label num">{t("Trial")}{t(trial)} / {t(totalTrials)}
           </span>
         ) : (
-          <span className="label">{finished ? "Complete" : "Ready"}</span>
-        )}
+          <span className="label">{t(finished ? "Complete" : "Ready")}</span>
+        ))}
         <button
           className="close-btn"
           disabled={busy}
@@ -134,107 +134,101 @@ export default function BlindTest() {
               .catch(fail)
               .finally(() => setBusy(false));
           }}
-          aria-label="Close"
+          aria-label={t("Close")}
         >
           <IconClose />
         </button>
       </div>
 
-      {!active && !finished && (
+      {t(!active && !finished && (
         <>
           <div className="proto-picker">
-            {PROTOCOLS.map((p) => (
+            {t(PROTOCOLS.map((p) => (
               <button
                 key={p.mode}
                 className="proto"
                 data-on={mode === p.mode}
                 onClick={() => setMode(p.mode)}
               >
-                <span className="s">{p.label}</span>
-                <span className="h">{p.mode === "abx" ? "3 slots" : "2 slots"}</span>
+                <span className="s">{t(p.label)}</span>
+                <span className="h">{t(p.mode === "abx" ? "3 slots" : "2 slots")}</span>
               </button>
-            ))}
+            )))}
           </div>
           <div className="eq-hint" style={{ marginBottom: 12 }}>
-            {PROTOCOLS.find((p) => p.mode === mode)?.blurb}
-            {mode === "abx"
+            {t(PROTOCOLS.find((p) => p.mode === mode)?.blurb)}
+            {t(mode === "abx"
               ? " Keys: A / B / X to switch, 1 = X is A, 2 = X is B."
-              : " Keys: X / Y to switch, 1 = X is A, 2 = Y is A."}
+              : " Keys: X / Y to switch, 1 = X is A, 2 = Y is A.")}
           </div>
 
           <div className="field" style={{ borderTop: "1px solid var(--hairline)" }}>
-            <span className="k">Trials</span>
+            <span className="k">{t("Trials")}</span>
             <div className="xfade-opts">
-              {TRIAL_OPTIONS.map((n) => (
+              {t(TRIAL_OPTIONS.map((n) => (
                 <button key={n} className="num" data-on={trials === n} onClick={() => setTrials(n)}>
-                  {n}
+                  {t(n)}
                 </button>
-              ))}
+              )))}
             </div>
           </div>
 
-          {!bothLoaded && (
-            <div className="eq-hint" style={{ color: "var(--m-hot)", marginTop: 10 }}>
-              Both decks need a track before a test can start.
-            </div>
-          )}
+          {t(!bothLoaded && (
+            <div className="eq-hint" style={{ color: "var(--m-hot)", marginTop: 10 }}>{t("Both decks need a track before a test can start.")}</div>
+          ))}
 
           <div className="blind-actions" style={{ marginTop: 16 }}>
-            <button className="solid-btn quiet" onClick={() => setBlindOpen(false)}>
-              Cancel
-            </button>
+            <button className="solid-btn quiet" onClick={() => setBlindOpen(false)}>{t("Cancel")}</button>
             <button
               className="solid-btn"
               disabled={busy || !bothLoaded}
               onClick={() => run(api.blindStart(trials, mode))}
-            >
-              Begin
-            </button>
+            >{t("Begin")}</button>
           </div>
         </>
-      )}
+      ))}
 
-      {active && blind && (
+      {t(active && blind && (
         <>
           <div className="blind-slots" data-count={slots.length}>
-            {slots.map((slot) => (
+            {t(slots.map((slot) => (
               <button
                 key={slot}
                 className="blind-slot"
                 data-on={current === slot}
                 disabled={busy}
                 onClick={() => run(api.blindSwitch(slot))}
-                title={`Listen to slot ${slotLabel(slot)}`}
+                title={t(`Listen to slot ${slotLabel(slot)}`)}
               >
-                <span className="s">{slotLabel(slot)}</span>
-                <span className="h">{current === slot ? "audible" : "switch"}</span>
+                <span className="s">{t(slotLabel(slot))}</span>
+                <span className="h">{t(current === slot ? "audible" : "switch")}</span>
               </button>
-            ))}
+            )))}
           </div>
 
           <div className="blind-progress">
             <i style={{ width: `${((trial - 1) / Math.max(1, totalTrials)) * 100}%` }} />
           </div>
 
-          <div className="blind-question">{question}</div>
+          <div className="blind-question">{t(question)}</div>
 
           <div className="blind-actions">
-            {answers.map((slot) => (
+            {t(answers.map((slot) => (
               <button
                 key={slot}
                 className="solid-btn"
                 disabled={busy}
                 onClick={() => run(api.blindVote(slot))}
               >
-                {voteLabel(slot)}
+                {t(voteLabel(slot))}
               </button>
-            ))}
+            )))}
           </div>
 
           <div className="field" style={{ marginTop: 6 }}>
-            <span className="k">Running score</span>
+            <span className="k">{t("Running score")}</span>
             <span className="v num">
-              {score} / {Math.max(0, trial - 1)}
+              {t(score)} / {t(Math.max(0, trial - 1))}
             </span>
           </div>
 
@@ -243,72 +237,67 @@ export default function BlindTest() {
             style={{ width: "100%", marginTop: 8 }}
             disabled={busy}
             onClick={() => run(api.blindAbort())}
-          >
-            Abort
-          </button>
+          >{t("Abort")}</button>
         </>
-      )}
+      ))}
 
-      {!active && finished && blind && (
+      {t(!active && finished && blind && (
         <>
           <div className="blind-score">
             <span className="v num">
-              {score}
-              <span style={{ fontSize: 15, color: "var(--text-faint)" }}>/{blind.votes.length}</span>
+              {t(score)}
+              <span style={{ fontSize: 15, color: "var(--text-faint)" }}>/{t(blind.votes.length)}</span>
             </span>
-            <span className="k">correct identifications</span>
+            <span className="k">{t("correct identifications")}</span>
           </div>
 
           <div className="blind-verdict" data-significant={blind.pValue != null && blind.pValue < 0.05}>
-            {verdict(score, blind.votes.length, blind.pValue)}
+            {t(verdict(score, blind.votes.length, blind.pValue))}
           </div>
 
           <div className="field">
-            <span className="k">One-tailed exact binomial</span>
-            <span className="v num">p = {formatPValue(blind.pValue)}</span>
+            <span className="k">{t("One-tailed exact binomial")}</span>
+            <span className="v num">{t("p = ")}{t(formatPValue(blind.pValue))}</span>
           </div>
 
-          {blind.mode === "ab" && blind.mapping && (
+          {t(blind.mode === "ab" && blind.mapping && (
             <div className="field">
-              <span className="k">Final mapping</span>
-              <span className="v num">
-                X = deck {blind.mapping.x.toUpperCase()} {"\u00B7"} Y = deck{" "}
-                {blind.mapping.y.toUpperCase()}
+              <span className="k">{t("Final mapping")}</span>
+              <span className="v num">{t("X = deck")}{t(blind.mapping.x.toUpperCase())} {t("\u00B7")}{t(" Y = deck")}{t(" ")}
+                {t(blind.mapping.y.toUpperCase())}
               </span>
             </div>
-          )}
-          {blind.mode === "abx" && blind.abxMapping && (
+          ))}
+          {t(blind.mode === "abx" && blind.abxMapping && (
             <div className="field">
-              <span className="k">X on the final trial</span>
-              <span className="v num">deck {blind.abxMapping.x.toUpperCase()}</span>
+              <span className="k">{t("X on the final trial")}</span>
+              <span className="v num">{t("deck ")}{t(blind.abxMapping.x.toUpperCase())}</span>
             </div>
-          )}
+          ))}
 
           <table className="result-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Chose</th>
-                <th>Answer</th>
-                <th>Result</th>
+                <th>{t("Chose")}</th>
+                <th>{t("Answer")}</th>
+                <th>{t("Result")}</th>
               </tr>
             </thead>
             <tbody>
-              {blind.votes.map((v) => (
+              {t(blind.votes.map((v) => (
                 <tr key={v.trial}>
-                  <td className="num">{v.trial}</td>
-                  <td className="num">{slotLabel(v.chose)}</td>
-                  <td className="num">{slotLabel(v.correctSlot)}</td>
-                  <td data-ok={v.correct}>{v.correct ? "hit" : "miss"}</td>
+                  <td className="num">{t(v.trial)}</td>
+                  <td className="num">{t(slotLabel(v.chose))}</td>
+                  <td className="num">{t(slotLabel(v.correctSlot))}</td>
+                  <td data-ok={v.correct}>{t(v.correct ? "hit" : "miss")}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
 
           <div className="blind-actions" style={{ marginTop: 14 }}>
-            <button className="solid-btn quiet" onClick={() => setBlindOpen(false)}>
-              Close
-            </button>
+            <button className="solid-btn quiet" onClick={() => setBlindOpen(false)}>{t("Close")}</button>
             <button
               className="solid-btn quiet"
               disabled={busy}
@@ -317,19 +306,15 @@ export default function BlindTest() {
                 setTrials(blind.trials);
                 setSetupAgain(true);
               }}
-            >
-              New test
-            </button>
+            >{t("New test")}</button>
             <button
               className="solid-btn"
               disabled={busy || !bothLoaded}
               onClick={() => run(api.blindStart(totalTrials, blind.mode))}
-            >
-              Run again
-            </button>
+            >{t("Run again")}</button>
           </div>
         </>
-      )}
+      ))}
     </div>
   );
 }

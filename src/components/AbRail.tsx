@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * The A/B rail — level matching (SPEC §10) and time alignment (§11).
  *
@@ -141,38 +142,34 @@ export default function AbRail() {
 
   return (
     <div className="ab-rail">
-      <span className="label ab-rail-title">A / B</span>
+      <span className="label ab-rail-title">{t("A / B")}</span>
 
       <button
         className="tr-toggle match"
         data-on={lm.enabled}
         data-pending={lm.enabled && !lm.ready}
         onClick={() => void api.setLevelMatch(!lm.enabled).catch(fail)}
-        title={
-          "Match the two decks by integrated LUFS (G).\nOff by default: the signal path is untouched unless you ask for it.\nOnly ever attenuates \u2014 the louder deck comes down."
-        }
+        title={t("Match the two decks by integrated LUFS (G).\nOff by default: the signal path is untouched unless you ask for it.\nOnly ever attenuates \u2014 the louder deck comes down.")}
       >
-        {matchLabel}
+        {t(matchLabel)}
       </button>
 
       <span className="rail-sep" />
 
       <div className="align-group" ref={groupRef} data-offset="false">
-        <span className="label" title="Deck B is moved; deck A is the reference timeline">
-          Align
-        </span>
+        <span className="label" title={t("Deck B is moved; deck A is the reference timeline")}>{t("Align")}</span>
 
         <button
           className="ghost-btn"
           disabled={!bothLoaded || aligning}
           onClick={runAutoAlign}
-          title="Estimate the offset by cross-correlating the two decks"
+          title={t("Estimate the offset by cross-correlating the two decks")}
         >
-          {aligning ? "Working" : "Auto"}
+          {t(aligning ? "Working" : "Auto")}
         </button>
 
         <div className="nudges">
-          {NUDGES.map((n) => (
+          {t(NUDGES.map((n) => (
             <button
               key={`-${n.label}`}
               className="num"
@@ -180,21 +177,17 @@ export default function AbRail() {
               data-coarse={n.coarse ? "true" : undefined}
               disabled={!bothLoaded}
               onClick={() => nudgeOffsetBy({ ms: n.ms ? -n.ms : undefined, samples: n.samples ? -n.samples : undefined })}
-              title={`Deck B ${n.label} earlier`}
+              title={t(`Deck B ${n.label} earlier`)}
             >
-              {"\u2212"}
-              {n.label}
+              {t("\u2212")}
+              {t(n.label)}
             </button>
-          ))}
+          )))}
           <span className="nudge-mid">
-            <span className="num off-ms" ref={msRef}>
-              0.00 ms
-            </span>
-            <span className="num off-smp" ref={smpRef}>
-              0 smp
-            </span>
+            <span className="num off-ms" ref={msRef}>{t("0.00 ms")}</span>
+            <span className="num off-smp" ref={smpRef}>{t("0 smp")}</span>
           </span>
-          {NUDGES_LATER.map((n) => (
+          {t(NUDGES_LATER.map((n) => (
             <button
               key={`+${n.label}`}
               className="num"
@@ -202,63 +195,57 @@ export default function AbRail() {
               data-coarse={n.coarse ? "true" : undefined}
               disabled={!bothLoaded}
               onClick={() => nudgeOffsetBy({ ms: n.ms, samples: n.samples })}
-              title={`Deck B ${n.label} later`}
+              title={t(`Deck B ${n.label} later`)}
             >
-              +{n.label}
+              +{t(n.label)}
             </button>
-          ))}
+          )))}
         </div>
 
         <button
           className="ghost-btn"
           disabled={!bothLoaded}
           onClick={resetOffset}
-          title="Back to a zero offset"
-        >
-          Reset
-        </button>
+          title={t("Back to a zero offset")}
+        >{t("Reset")}</button>
       </div>
 
       <span className="rail-sep" />
 
       <div className="invert-group">
-        <span className="label" title="Polarity invert — flips the whole deck">
-          {"\u00F8"}
+        <span className="label" title={t("Polarity invert — flips the whole deck")}>
+          {t("\u00F8")}
         </span>
         <button
           className="tr-toggle sm"
           data-on={invertA}
           onClick={() => toggleInvert("a", !invertA)}
-          title="Invert the polarity of deck A"
-        >
-          A
-        </button>
+          title={t("Invert the polarity of deck A")}
+        >{t("A")}</button>
         <button
           className="tr-toggle sm"
           data-on={invertB}
           onClick={() => toggleInvert("b", !invertB)}
-          title="Invert the polarity of deck B"
-        >
-          B
-        </button>
+          title={t("Invert the polarity of deck B")}
+        >{t("B")}</button>
       </div>
 
-      {result && !result.applied && (
+      {t(result && !result.applied && (
         <span className="align-note warn">
-          {`Auto-align was not confident (${(result.confidence * 100).toFixed(
+          {t(`Auto-align was not confident (${(result.confidence * 100).toFixed(
             0,
-          )}%) \u2014 use the nudges or Alt-drag lane B.`}
+          )}%) \u2014 use the nudges or Alt-drag lane B.`)}
         </span>
-      )}
-      {result?.polarityInverted && (
+      ))}
+      {t(result?.polarityInverted && (
         <span className="align-note">
-          {"The best match was polarity-inverted \u2014 try \u00F8 on one deck."}
+          {t("The best match was polarity-inverted \u2014 try \u00F8 on one deck.")}
         </span>
-      )}
+      ))}
 
       <span className="spacer" />
       <span className="align-hint">
-        {"Alt-drag lane B to slide \u00B7 , / . to nudge \u00B7 \u21E7 = 100 ms, \u2325 = 1 sample"}
+        {t("Alt-drag lane B to slide \u00B7 , / . to nudge \u00B7 \u21E7 = 100 ms, \u2325 = 1 sample")}
       </span>
     </div>
   );

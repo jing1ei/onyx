@@ -154,6 +154,12 @@ export function installKeyboard(): () => void {
     // Learn the legends even while the user is typing in a field: on macOS
     // this is the only way the overlay ever finds out what `[` is called here.
     observeLegend(e);
+    if (useStore.getState().editorActive) {
+      const state = useStore.getState();
+      if (e.key === 'Escape') { state.setSettingsOpen(false); state.setShortcutsOpen(false); }
+      if (e.key === '?' && !isTypingTarget(e.target) && !isComposing(e)) state.toggleShortcuts();
+      return;
+    }
     /* An input method is composing. Focus is normally in a field then, which
        the next line already catches, but not always: a candidate window is
        open over a webview whose focus has moved (a panel closed under it, the

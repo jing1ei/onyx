@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * Persistent monitoring badges.
  *
@@ -51,10 +52,10 @@ function OffsetBadge() {
       data-on="false"
       ref={root}
       onClick={resetOffset}
-      title="Deck B is time-shifted against deck A. Click to reset to zero."
+      title={t("Deck B is time-shifted against deck A. Click to reset to zero.")}
     >
       <i className="sb-dot" />
-      <span className="sb-k">B offset</span>
+      <span className="sb-k">{t("B offset")}</span>
       <span className="sb-v num" ref={val} />
     </button>
   );
@@ -79,10 +80,10 @@ function AuditionBadge() {
       data-on="false"
       ref={root}
       onClick={forceStopAudition}
-      title="A narrow band-pass is being auditioned. This is not the programme. Click to stop."
+      title={t("A narrow band-pass is being auditioned. This is not the programme. Click to stop.")}
     >
       <i className="sb-dot" />
-      <span className="sb-k">Band solo</span>
+      <span className="sb-k">{t("Band solo")}</span>
       <span className="sb-v num" ref={val} />
     </button>
   );

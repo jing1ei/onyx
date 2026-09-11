@@ -49,3 +49,16 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+# Local build toolchain
+.tools/
+release-local/
+release-integrated/
+release-unified/
+
+# Private workstation notes and local-only import scripts
+/AGENTS.md
+/CODEX_HANDOFF.zh-CN.md
+/LOCAL_EDITOR_README.zh-CN.md
+/MIGRATION_REQUIREMENTS.zh-CN.md
+/scripts/build-editor-local.ps1
+/scripts/test-editor-import.mjs

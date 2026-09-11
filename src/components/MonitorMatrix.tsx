@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 /**
  * Monitor matrix — SPEC.md §6.
  *
@@ -59,19 +60,17 @@ export function MonitorControl() {
 
   return (
     <div className="monitor">
-      <span className="label" title={MONITOR_HINT}>
-        Monitor
-      </span>
+      <span className="label" title={t(MONITOR_HINT)}>{t("Monitor")}</span>
       <div className="mon-opts" ref={wrapRef} data-mode="stereo">
-        {MONITOR_FOLDS.map((m) => (
+        {t(MONITOR_FOLDS.map((m) => (
           <button
             key={m.mode}
             type="button"
             data-mode={m.mode}
             data-on="false"
             data-alarm={m.alarming ? "true" : undefined}
-            title={`${m.long} \u2014 ${m.maths} \u00B7 key ${monitorLegend(m)}, again for stereo.\n${MONITOR_HINT}`}
-            aria-label={`Monitor ${m.long}`}
+            title={t(`${m.long} \u2014 ${m.maths} \u00B7 key ${monitorLegend(m)}, again for stereo.\n${MONITOR_HINT}`)}
+            aria-label={t(`Monitor ${m.long}`)}
             onClick={() => {
               // the frame stream, not the 10 Hz snapshot: a fold set by its
               // key a moment ago is not in the snapshot yet, and toggling
@@ -80,9 +79,9 @@ export function MonitorControl() {
               apply(toggleMonitor(now, m.mode));
             }}
           >
-            {m.short}
+            {t(m.short)}
           </button>
-        ))}
+        )))}
       </div>
     </div>
   );
@@ -114,14 +113,12 @@ export function MonitorBadge() {
       ref={rootRef}
       data-on="false"
       data-tone="champagne"
-      title={`${MONITOR_HINT}\nClick to return to stereo.`}
+      title={t(`${MONITOR_HINT}\nClick to return to stereo.`)}
       onClick={() => apply("stereo")}
     >
       <i className="sb-dot" />
-      <span className="sb-k">Monitor</span>
-      <span className="sb-v" ref={nameRef}>
-        MONO
-      </span>
+      <span className="sb-k">{t("Monitor")}</span>
+      <span className="sb-v" ref={nameRef}>{t("MONO")}</span>
       <span className="sb-m num" ref={mathsRef} />
     </button>
   );

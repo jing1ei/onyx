@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../lib/api";
 import { useAudibleDeck } from "../lib/audible";
@@ -19,7 +20,7 @@ interface CtxState {
   entry: PlaylistEntry;
 }
 
-export default function Playlist() {
+export default function Playlist({ onOpen }: { onOpen?: (path: string) => void } = {}) {
   const snapshot = useStore((s) => s.snapshot);
   const selectedId = useStore((s) => s.selectedId);
   const pendingPlayId = useStore((s) => s.pendingPlayId);
@@ -86,6 +87,7 @@ export default function Playlist() {
       // loading a row replaces deck A, which would invalidate a running test
       if (blindLocked("Loading a track")) return;
       setSelectedId(entry.id);
+      if (onOpen) { onOpen(entry.path); return; }
       setPendingPlayId(entry.id);
       api
         .playlistPlayEntry(entry.id)
@@ -95,7 +97,7 @@ export default function Playlist() {
           fail(err);
         });
     },
-    [fail, setPendingPlayId, setSelectedId, setSnapshot],
+    [fail, onOpen, setPendingPlayId, setSelectedId, setSnapshot],
   );
 
   /**
@@ -107,6 +109,7 @@ export default function Playlist() {
    */
   const assign = useCallback(
     (entry: PlaylistEntry, deck: Deck) => {
+      if (onOpen) return;
       if (blindLocked("Assigning a deck")) return;
       setSelectedId(entry.id);
       api
@@ -114,7 +117,7 @@ export default function Playlist() {
         .then((snap) => setSnapshot(snap))
         .catch(fail);
     },
-    [fail, setSelectedId, setSnapshot],
+    [fail, onOpen, setSelectedId, setSnapshot],
   );
 
   const remove = useCallback(
@@ -157,18 +160,17 @@ export default function Playlist() {
     return (
       <section className="playlist">
         <div className="pl-head">
-          <span className="label">Playlist</span>
+          <span className="label">{t("Playlist")}</span>
         </div>
         <div />
         <div className="pl-empty">
-          <strong>Nothing queued</strong>
-          <span>Drop audio files anywhere in the window, or open a folder of masters.</span>
+          <strong>{t("Nothing queued")}</strong>
+          <span>{t("Drop audio files anywhere in the window, or open a folder of masters.")}</span>
           <button
             className="ghost-btn"
             onClick={() => api.pickAndOpenFiles(true).then(setSnapshot).catch(fail)}
           >
-            <IconPlus size={10} /> Open files
-          </button>
+            <IconPlus size={10} />{t("Open files")}</button>
         </div>
       </section>
     );
@@ -177,33 +179,29 @@ export default function Playlist() {
   return (
     <section className="playlist">
       <div className="pl-head">
-        <span className="label">Playlist</span>
+        <span className="label">{t("Playlist")}</span>
         <span className="pl-count num">
-          {playlist.length} track{playlist.length === 1 ? "" : "s"} · {formatTime(total)}
+          {playlist.length} {t(playlist.length === 1 ? 'track' : 'tracks')} · {formatTime(total)}
         </span>
-        {archives.length > 0 && (
-          <i className="pl-tag arc" title={`Opened from ${archives.join(", ")}`}>
-            {archives.length === 1 ? archives[0] : `${archives.length} archives`}
+        {t(archives.length > 0 && (
+          <i className="pl-tag arc" title={t(`Opened from ${archives.join(", ")}`)}>
+            {t(archives.length === 1 ? archives[0] : `${archives.length} archives`)}
           </i>
-        )}
+        ))}
         <div className="pl-actions">
           <button
             className="ghost-btn"
             onClick={() => api.pickAndOpenFiles(false).then(setSnapshot).catch(fail)}
-            title="Add files (⌘⇧O)"
-          >
-            Add
-          </button>
+            title={t("Add files (⌘⇧O)")}
+          >{t("Add")}</button>
           <button
             className="ghost-btn"
             onClick={() => {
               if (blindLocked("Clearing the playlist")) return;
               api.playlistClear().then(setSnapshot).catch(fail);
             }}
-            title="Clear playlist (⌘K)"
-          >
-            Clear
-          </button>
+            title={t("Clear playlist (⌘K)")}
+          >{t("Clear")}</button>
         </div>
       </div>
 
@@ -213,14 +211,14 @@ export default function Playlist() {
           header and the rows with one rule. */}
       <div className="pl-cols pl-grid">
         <span className="pl-i">#</span>
-        <span className="pl-title">Title</span>
-        <span className="pl-artist">Artist</span>
-        <span className="pl-deck">Deck</span>
-        <span className="pl-dur">Time</span>
+        <span className="pl-title">{t("Title")}</span>
+        <span className="pl-artist">{t("Artist")}</span>
+        <span className="pl-deck">{t("Deck")}</span>
+        <span className="pl-dur">{t("Time")}</span>
       </div>
 
       <div className="pl-rows" ref={rowsRef}>
-        {playlist.map((entry, index) => {
+        {t(playlist.map((entry, index) => {
           // Only decks that are part of what you hear get a badge: with A/B off
           // a stale "B" on another row is the same false "two decks are live"
           // claim as the old double highlight.
@@ -277,7 +275,7 @@ export default function Playlist() {
                 setCtx({ x: e.clientX, y: e.clientY, entry });
               }}
             >
-              <span className="pl-i num">{index + 1}</span>
+              <span className="pl-i num">{t(index + 1)}</span>
               <span className="pl-title">
                 {entry.title ?? entry.fileName}
                 {/* Where the row came from and what it is, in the order a
@@ -287,16 +285,14 @@ export default function Playlist() {
                     and a .mid row says up front that what you will hear is a
                     synthesised General MIDI rendering, not a recording
                     (SPEC §18). */}
-                {entry.synthBank && (
-                  <i className="pl-tag" title={`Rendered through ${entry.synthBank}`}>
-                    MIDI · GM
+                {t(entry.synthBank && (
+                  <i className="pl-tag" title={t(`Rendered through ${entry.synthBank}`)}>{t("MIDI · GM")}</i>
+                ))}
+                {t(entry.archive && markRows && (
+                  <i className="pl-tag arc" title={t(`From the archive ${entry.archive}`)}>
+                    {t(entry.archive)}
                   </i>
-                )}
-                {entry.archive && markRows && (
-                  <i className="pl-tag arc" title={`From the archive ${entry.archive}`}>
-                    {entry.archive}
-                  </i>
-                )}
+                ))}
                 {entry.title && <span className="pl-sub">{entry.fileName}</span>}
               </span>
               <span className="pl-artist">{entry.artist ?? "\u2014"}</span>
@@ -309,23 +305,22 @@ export default function Playlist() {
                   and whenever either chip has keyboard focus. Never
                   hover-only: a trackpad is not the only way into this app. */}
               <span className="pl-deck">
-                <span className="pl-chips" role="group" aria-label="Assign this track to a deck">
-                  {DECKS.map((d) => {
+                <span className="pl-chips" role="group" aria-label={t("Assign this track to a deck")}>
+                  {t(DECKS.map((d) => {
                     const on = deck === d;
                     const label = d.toUpperCase();
                     return (
                       <button
                         key={d}
                         className="deck-chip"
+                        disabled={!!onOpen}
                         data-deck={d}
                         data-on={on}
                         aria-pressed={on}
                         draggable={false}
-                        title={
-                          on
+                        title={t(on
                             ? `On deck ${label} \u00B7 click to reload it (\u21E7${label})`
-                            : `Assign to deck ${label} (\u21E7${label})`
-                        }
+                            : `Assign to deck ${label} (\u21E7${label})`)}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           // the row underneath means "play now" (SPEC §2.3)
@@ -333,33 +328,30 @@ export default function Playlist() {
                           assign(entry, d);
                         }}
                       >
-                        {label}
+                        {t(label)}
                       </button>
                     );
-                  })}
+                  }))}
                 </span>
               </span>
-              <span className="pl-dur num">{formatTime(entry.durationSecs)}</span>
+              <span className="pl-dur num">{t(formatTime(entry.durationSecs))}</span>
             </div>
           );
-        })}
+        }))}
       </div>
 
-      {ctx && (
+      {t(ctx && (
         <div
           className="ctx-menu"
           style={{ left: Math.min(ctx.x, window.innerWidth - 224), top: Math.min(ctx.y, window.innerHeight - 210) }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <button className="ctx-item" onClick={() => { play(ctx.entry); setCtx(null); }}>
-            Play now <small>Click</small>
+          <button className="ctx-item" onClick={() => { play(ctx.entry); setCtx(null); }}>{t(onOpen ? "打开音频" : "Play now")}<small>{t("Click")}</small>
           </button>
           <div className="ctx-sep" />
-          <button className="ctx-item" onClick={() => { assign(ctx.entry, "a"); setCtx(null); }}>
-            Assign to deck A <small>{"\u21E7A"}</small>
+          <button className="ctx-item" disabled={!!onOpen} onClick={() => { assign(ctx.entry, "a"); setCtx(null); }}>{t("Assign to deck A")}<small>{t("\u21E7A")}</small>
           </button>
-          <button className="ctx-item" onClick={() => { assign(ctx.entry, "b"); setCtx(null); }}>
-            Assign to deck B <small>{"\u21E7B"}</small>
+          <button className="ctx-item" disabled={!!onOpen} onClick={() => { assign(ctx.entry, "b"); setCtx(null); }}>{t("Assign to deck B")}<small>{t("\u21E7B")}</small>
           </button>
           <div className="ctx-sep" />
           <button
@@ -369,17 +361,16 @@ export default function Playlist() {
               setCtx(null);
             }}
           >
-            {IS_MAC ? "Reveal in Finder" : "Show in Explorer"}
+            {t(IS_MAC ? "Reveal in Finder" : "Show in Explorer")}
           </button>
           <button
             className="ctx-item"
             data-danger="true"
             onClick={() => { remove(ctx.entry); setCtx(null); }}
-          >
-            Remove <small>Del</small>
+          >{t("Remove")}<small>{t("Del")}</small>
           </button>
         </div>
-      )}
+      ))}
     </section>
   );
 }

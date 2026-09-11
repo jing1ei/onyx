@@ -8,11 +8,14 @@
  * of these two functions.
  */
 
+import { t } from './i18n';
 export function setText(el: HTMLElement | null, value: string): void {
+  value = t(value);
   if (el && el.textContent !== value) el.textContent = value;
 }
 
 export function setAttr(el: Element | null, name: string, value: string): void {
+  if (name === 'title' || name === 'aria-label') value = t(value);
   if (el && el.getAttribute(name) !== value) el.setAttribute(name, value);
 }
 

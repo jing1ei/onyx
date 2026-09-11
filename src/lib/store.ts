@@ -47,6 +47,15 @@ export function onSnapshot(fn: SnapshotObserver): () => void {
    broadcast and is never written by the UI. */
 
 interface OnyxState {
+  editorActive: boolean;
+  modeSwitching: boolean;
+  modeError: string | null;
+  setModeSwitching: (busy: boolean) => void;
+  setModeError: (message: string | null) => void;
+  editorPath: string;
+  editorDirty: boolean;
+  setEditorDocument: (path: string, dirty: boolean) => void;
+  setEditorActive: (active: boolean) => void;
   snapshot: AppSnapshot | null;
   connected: boolean;
   lastError: string | null;
@@ -100,6 +109,15 @@ let toastSeq = 1;
 const emptyWaveform = (): DeckWaveform => ({ entryId: null, data: null, version: 0 });
 
 export const useStore = create<OnyxState>((set, get) => ({
+  editorActive: false,
+  modeSwitching: false,
+  modeError: null,
+  setModeSwitching: (modeSwitching) => set({ modeSwitching }),
+  setModeError: (modeError) => set({ modeError }),
+  editorPath: '',
+  editorDirty: false,
+  setEditorDocument: (editorPath, editorDirty) => set({ editorPath, editorDirty }),
+  setEditorActive: (editorActive) => set({ editorActive, dropActive: false, dropDeck: null }),
   snapshot: null,
   connected: false,
   lastError: null,

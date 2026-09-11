@@ -1285,6 +1285,8 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
   const bool = (k: string): boolean => Boolean(raw[k]);
 
   switch (cmd) {
+    case "editor_io":
+      return { canceled: true } as T;
     case "app_state":
       return snapshot() as T;
 

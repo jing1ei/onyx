@@ -1,11 +1,13 @@
+import { t } from "../lib/i18n";
 import { useEffect, useMemo, useRef } from "react";
 import { alignRef, formatOffsetFrames, formatOffsetMs } from "../lib/align";
 import { beginPaint, useSurface } from "../lib/canvas";
 import { useFrameEffect } from "../lib/frame";
 import { formatLufs, formatSignedDb, formatTimeFine } from "../lib/format";
 import type { DeckWaveform } from "../lib/store";
-import { paint, type Paint, type PaintToken } from "../lib/theme";
+import { paint, type PaintToken } from "../lib/theme";
 import type { Deck, DeckState } from "../lib/types";
+import { barGeometry, waveRamps } from '../lib/waveStyle';
 
 /** Shared, mutable interaction state. Lives in a ref so pointer motion and the
  *  60 Hz playhead never re-render React. */
@@ -75,21 +77,6 @@ interface Columns {
  * by the theme validator and once here, because this one is load-bearing for
  * the reduction loop below.
  */
-const BAR_STEP = 5;
-const BAR_DUTY = 0.6;
-
-/** Snap the pitch and the bar to whole device pixels. */
-function barGeometry(dpr: number, p: Paint): { step: number; barW: number } {
-  const step = p.num("--wf-bar-step") || BAR_STEP;
-  const duty = p.num("--wf-bar-duty") || BAR_DUTY;
-  const stepDev = Math.max(2, Math.round(Math.min(40, Math.max(2, step)) * dpr));
-  // at least one device pixel of gap, or the bars fuse back into an envelope
-  const barDev = Math.max(
-    1,
-    Math.min(stepDev - 1, Math.round(stepDev * Math.min(1, Math.max(0.15, duty)))),
-  );
-  return { step: stepDev / dpr, barW: barDev / dpr };
-}
 
 /**
  * Which colour a lane is drawn in. A token rather than a literal: deck A *is*
@@ -109,9 +96,6 @@ const MASKED_TOKEN: PaintToken = "--lane-masked-rgb";
  * end — is design, not colour, so it belongs here rather than in the token
  * layer; how much ink the lane gets in total is theming, so that does not.
  */
-const OUTER_SHAPE = [0.652, 1, 0.739, 1] as const;
-const CORE_SHAPE = [0.75, 1, 0.833, 1] as const;
-const SHAPE_STOPS = [0, 0.3, 0.66, 1] as const;
 
 function skeletonHeight(i: number): number {
   const x = Math.sin(i * 12.9898) * 43758.5453;
@@ -245,17 +229,7 @@ export default function WaveformLane({
 
         /** the lane's colour at an ink level, in whichever theme is on */
         const ink = (a: number): string => p.tint(lane, a);
-        const ramp = (level: number, shape: readonly number[]): CanvasGradient => {
-          const g = ctx.createLinearGradient(0, 0, lit, 0);
-          shape.forEach((k, i) => g.addColorStop(SHAPE_STOPS[i], ink(level * k)));
-          return g;
-        };
-
-        // The outer envelope: soft, and travelling across the lane so a long
-        // track does not read as one flat colour.
-        const outer = ramp(p.num("--wf-outer-a"), OUTER_SHAPE);
-        // The RMS core: the bright, dense part of every bar.
-        const core = ramp(p.num("--wf-core-a"), CORE_SHAPE);
+        const { outer, core } = waveRamps(ctx, p, lane, lit);
 
         ctx.fillStyle = outer;
         for (let i = 0; i < filled; i += 1) {
@@ -518,50 +492,45 @@ export default function WaveformLane({
     >
       <div className="lane-head">
         <i className="deck-badge" data-deck={deck} data-ghost={masked || !loaded}>
-          {masked ? "?" : deck.toUpperCase()}
+          {t(masked ? "?" : deck.toUpperCase())}
         </i>
-        {masked ? (
+        {t(masked ? (
           <span
             className="lane-name lane-hidden"
-            title={
-              "A fixed reference drawing. It does not follow the audible slot \u2014 if it did, switching slots would show you the answer."
-            }
+            title={t("A fixed reference drawing. It does not follow the audible slot \u2014 if it did, switching slots would show you the answer.")}
           >
-            {"hidden slot \u00B7 reference view"}
+            {t("hidden slot \u00B7 reference view")}
           </span>
         ) : (
           <>
             <span className="lane-name">{loaded ? name : "\u2014"}</span>
             {info?.artist && <span className="lane-artist">{info.artist}</span>}
           </>
-        )}
+        ))}
         <span className="lane-spacer" />
-        {!masked && state?.invert && (
-          <span className="lane-meta lane-invert num" title="Polarity inverted">
-            {"\u00F8"} inverted
-          </span>
-        )}
+        {t(!masked && state?.invert && (
+          <span className="lane-meta lane-invert num" title={t("Polarity inverted")}>
+            {t("\u00F8")}{t("inverted")}</span>
+        ))}
         {/* Which deck you are *hearing*, said in words on both lanes rather
             than implied by one dimmed lane. `A` / `B` only move this label:
             they never assign, and a reader who mistakes the two thinks
             assignment is broken (SPEC §2.8). */}
-        {!masked && abEnabled && (
+        {t(!masked && abEnabled && (
           <span className={audible ? "lane-audible" : "lane-silent"}>
-            {audible ? "audible" : "silent"}
+            {t(audible ? "audible" : "silent")}
           </span>
-        )}
-        {!masked && lufs != null && (
+        ))}
+        {t(!masked && lufs != null && (
           <span className="lane-meta num">
-            <em>I</em>
-            {formatLufs(lufs)} LUFS
-          </span>
-        )}
-        {!masked && state && Math.abs(state.trimDb) > 0.049 && (
+            <em>{t("I")}</em>
+            {t(formatLufs(lufs))}{t("LUFS")}</span>
+        ))}
+        {t(!masked && state && Math.abs(state.trimDb) > 0.049 && (
           <span className="lane-meta lane-trim num">
-            <em>trim</em>
-            {formatSignedDb(state.trimDb)} dB
-          </span>
-        )}
+            <em>{t("trim")}</em>
+            {t(formatSignedDb(state.trimDb))}{t("dB")}</span>
+        ))}
       </div>
       <div
         className="lane-canvas"
@@ -574,27 +543,27 @@ export default function WaveformLane({
         <canvas ref={overRef} />
         {/* Named while the drag is still in the air: a highlight alone says
             "something will happen here", not "this becomes deck B". */}
-        {!masked && (
+        {t(!masked && (
           <div className="lane-drop-hint" aria-hidden={!dropTarget}>
-            {`assign to deck ${deckName}`}
+            {t(`assign to deck ${deckName}`)}
           </div>
-        )}
+        ))}
         {/* An empty lane used to be a blank rectangle with no explanation —
             the single most confusing thing about A/B, because it looks like a
             deck that refuses to load. It now says how to fill itself, and
             names all three routes that reach this deck (SPEC §2.8). */}
-        {!masked && !loaded && (
+        {t(!masked && !loaded && (
           <div className="lane-empty">
-            <strong>{`Deck ${deckName} is empty`}</strong>
+            <strong>{t(`Deck ${deckName} is empty`)}</strong>
             <span>
-              {`Drag a track here \u00B7 tap `}
-              <em>{deckName}</em>
-              {` on a playlist row \u00B7 `}
-              <em>{`\u21E7${deckName}`}</em>
-              {" assigns the selected row"}
+              {t(`Drag a track here \u00B7 tap `)}
+              <em>{t(deckName)}</em>
+              {t(` on a playlist row \u00B7 `)}
+              <em>{t(`\u21E7${deckName}`)}</em>
+              {t(" assigns the selected row")}
             </span>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

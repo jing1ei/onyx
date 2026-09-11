@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useRef } from "react";
 import * as api from "../lib/api";
 import { alignRef, setOffset } from "../lib/align";
@@ -285,8 +286,8 @@ export default function WaveformStack() {
       {/* The lanes and the meters are one region: the meters read the audible
           deck the lanes are drawing, and they share the region's height. */}
       <div className="wave-lanes">
-        {!anyLoaded && <div className="wave-empty">drop audio to begin</div>}
-        {anyLoaded && blindActive && (
+        {t(!anyLoaded && <div className="wave-empty">{t("drop audio to begin")}</div>)}
+        {t(anyLoaded && blindActive && (
           // One anonymous lane, and it is *always* deck A's material — never the
           // audible deck's. Painting the active deck meant the picture changed
           // the instant you switched slots, and in ABX the X lane was a
@@ -308,8 +309,8 @@ export default function WaveformStack() {
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeave}
           />
-        )}
-        {anyLoaded && !blindActive && (
+        ))}
+        {t(anyLoaded && !blindActive && (
           <>
             <WaveformLane
               deck="a"
@@ -328,7 +329,7 @@ export default function WaveformStack() {
               onLaneDragLeave={onLaneDragLeave}
               onLaneDrop={onLaneDrop}
             />
-            {abEnabled && (
+            {t(abEnabled && (
               <WaveformLane
                 deck="b"
                 state={deckB}
@@ -347,9 +348,9 @@ export default function WaveformStack() {
                 onLaneDragLeave={onLaneDragLeave}
                 onLaneDrop={onLaneDrop}
               />
-            )}
+            ))}
           </>
-        )}
+        ))}
       </div>
 
       <MeterCluster />
