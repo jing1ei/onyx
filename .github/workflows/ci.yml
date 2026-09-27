@@ -24,16 +24,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Release assembly and signing configuration
@@ -80,7 +80,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, macos-15-intel, windows-2022]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: install the linux webview toolchain
         if: matrix.os == 'ubuntu-24.04'
@@ -111,7 +111,7 @@ jobs:
       # tauri.conf.json points frontendDist at ../dist, and tauri-build reads
       # it: without a bundle on disk, anything that links the app fails before
       # a single test runs.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: install the linux webview toolchain
         run: |
@@ -156,7 +156,7 @@ jobs:
           key: bundle
           cache-on-failure: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -173,7 +173,7 @@ jobs:
       - name: what came out
         run: ls -l target/release/bundle/deb/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: onyx-deb-smoke-test
           path: target/release/bundle/deb/*.deb
@@ -195,14 +195,14 @@ jobs:
             targets: x86_64-pc-windows-msvc
             args: --debug --target x86_64-pc-windows-msvc --bundles nsis -- --locked
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: desktop-${{ matrix.os }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -214,7 +214,7 @@ jobs:
       - name: Preserve macOS bundle permissions
         if: runner.os == 'macOS'
         run: ditto -c -k --sequesterRsrc --keepParent target/universal-apple-darwin/debug/bundle/macos/Onyx.app target/Onyx-debug.app.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: desktop-smoke-${{ matrix.os }}
           path: |
