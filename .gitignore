@@ -1,0 +1,27 @@
+# Dependencies and generated output
+node_modules
+__pycache__/
+*.pyc
+/dist
+/dist-mock
+/dist-ssr
+/target
+/artifacts
+/shots
+/.tmp
+*.local
+*.tsbuildinfo
+logs
+*.log
+
+# Local release launcher and editor files
+/ship.command
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

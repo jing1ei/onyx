@@ -1,0 +1,35 @@
+# Grouped and monthly on purpose: an audio engine whose accuracy is the product
+# does not want a stream of one-line dependency PRs, and every bump here has to
+# be read against the test suite (the metering is standards-compliant to the
+# coefficient, and `rubato`, `rustfft` and `symphonia` are all load-bearing for
+# that). GitHub Actions is separate and weekly, because a stale action is a
+# supply-chain question rather than an accuracy one.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      rust-dependencies:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      js-dependencies:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

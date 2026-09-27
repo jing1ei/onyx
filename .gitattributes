@@ -1,0 +1,33 @@
+# Keep source line endings consistent across platforms.
+* text=auto eol=lf
+
+# Windows-only scripts that are executed by their host shell.
+*.ps1 text eol=crlf
+
+# Binary — never touched, never diffed as text.
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.sf2   binary
+*.wav   binary
+*.aiff  binary
+*.aif   binary
+*.caf   binary
+*.flac  binary
+*.mp3   binary
+*.m4a   binary
+*.ogg   binary
+*.opus  binary
+*.mka   binary
+*.mp4   binary
+*.mov   binary
+*.webm  binary
+
+# Generated / vendored: keep them out of diffs and language stats.
+package-lock.json  -diff linguist-generated
+Cargo.lock         -diff linguist-generated
+
+# Vendored third-party licence text, bundled into the app as a resource. It is
+# stored with CRLF exactly as its author shipped it; `-text` keeps it that way
+# rather than letting the rule above renormalise someone else's document.
+crates/onyx-core/assets/gm/GeneralUser-GS-LICENSE.txt -text

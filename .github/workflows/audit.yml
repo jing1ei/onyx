@@ -1,0 +1,43 @@
+# Check Rust dependencies weekly and when dependency files change.
+name: Audit
+
+on:
+  push:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "**/Cargo.toml"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "**/Cargo.toml"
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-audit
+      - name: cargo audit
+        run: cargo audit
+      - name: cargo audit — the warnings, for the record
+        if: always()
+        run: cargo audit --json > audit.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-audit-report
+          path: audit.json
+          if-no-files-found: warn
+          retention-days: 30
