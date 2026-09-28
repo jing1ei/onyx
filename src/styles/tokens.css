@@ -1,0 +1,650 @@
+/* Onyx themes: warm stone, Morandi mist blue and dusty rose by default, with an optional dark palette.
+   theme.ts derives accents from the saved choice; tokens define all surfaces.
+   Entry documents set data-theme="light" before the application loads. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Theme-independent: geometry, motion, type
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* geometry */
+  --r-control: 4px;
+  --r-panel: 10px;
+  --titlebar-h: 36px;
+  --transport-h: 64px;
+  /* the metering column inside the waveform region */
+  --meters-w: 216px;
+  --mac-inset: 78px;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-hover: 120ms;
+  --t-panel: 320ms;
+  --t-slow: 420ms;
+
+  /* Root scale factor (§15): applied by `theme.ts` as CSS `zoom` on <html>,
+     capped so `large` cannot squeeze the layout below its 420 × 560 floor. */
+  --zoom: 1;
+
+  /* Type. The two slots are tokens, not families: `data-ui-font` and
+     `data-num-font` pick a stack from the lists near the end of this file, and
+     every stack is built from faces the platform already has. Nothing is
+     fetched at runtime — the CSP forbids remote origins and this is an offline
+     tool. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-num: "SF Mono", ui-monospace, "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* The body size everything that does not state its own size inherits, and the
+     two tracking values the shared primitives at the end of this file use: the
+     all-caps section labels, and the tabular read-outs. Tokens rather than
+     literals because a theme document (SPEC §20) can move them, and because a
+     display face usually wants different tracking from a grotesque. */
+  --font-size-base: 13px;
+  --ls-label: 0.14em;
+  --ls-num: 0;
+
+  /* Waveform bar geometry (§20). Read by `WaveformLane`, not by CSS: the bar
+     pitch in CSS px before device-pixel snapping, and the share of that pitch
+     the bar itself gets. They live here because they are the one part of the
+     waveform's *look* that is not a colour. */
+  --wf-bar-step: 5;
+  --wf-bar-duty: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK — the identity (SPEC §4)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── surfaces ─────────────────────────────────────────────────────────── */
+  --ink-900: #0a0a0c;
+  --ink-850: #0d0d10;
+  --ink-800: #101014;
+  /* named by SPEC §4 as the raised-surface ink; kept so the palette in the
+     spec and the palette in the code are the same list */
+  --ink-700: #16161b;
+
+  /* Floating things. Each is a blurred surface over the app rather than a fill
+     on a known background, so they are near-opaque colours of their own. */
+  --surface-panel: rgba(18, 18, 22, 0.96);
+  --surface-menu: rgba(20, 20, 25, 0.97);
+  --surface-toast: rgba(20, 20, 25, 0.95);
+  --surface-badge: rgba(20, 20, 25, 0.92);
+  --surface-card: rgba(16, 16, 20, 0.98);
+  --scrim: rgba(6, 6, 8, 0.72);
+  --scrim-drop: rgba(8, 8, 10, 0.6);
+
+  /* Backgrounds that carry shading of their own, as whole values rather than
+     stops: light does not want the same *shape* of shading, only the same job. */
+  --stage-glow-a: rgb(var(--accent-rgb) / 0.045);
+  --stage-glow-b: rgb(var(--deck-b-rgb) / 0.035);
+  --bg-app:
+    radial-gradient(1200px 620px at 18% -12%, var(--stage-glow-a), transparent 62%),
+    radial-gradient(900px 520px at 105% 8%, var(--stage-glow-b), transparent 60%), var(--ink-900);
+  --bg-eq:
+    radial-gradient(900px 480px at 12% -18%, rgb(var(--accent-rgb) / 0.05), transparent 62%),
+    radial-gradient(700px 420px at 108% 12%, rgb(var(--deck-b-rgb) / 0.035), transparent 60%),
+    var(--ink-900);
+  --bg-titlebar: linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent);
+  --bg-stage: linear-gradient(180deg, rgba(255, 255, 255, 0.014), rgba(0, 0, 0, 0.22));
+  --bg-transport: linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(0, 0, 0, 0.3)),
+    var(--ink-850);
+  --bg-rail: linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent);
+
+  /* sunken wells: the inset boxes segmented controls and canvases sit in */
+  --well: rgba(0, 0, 0, 0.28);
+  --well-deep: rgba(0, 0, 0, 0.3);
+  --well-canvas: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.15));
+
+  /* ── hairlines ────────────────────────────────────────────────────────── */
+  --hairline: rgba(255, 255, 255, 0.06);
+  --hairline-strong: rgba(255, 255, 255, 0.1);
+  /* the quietest rule in the app: table rows, reference-card rows */
+  --hairline-soft: rgba(255, 255, 255, 0.035);
+
+  /* ── overlay fills ───────────────────────────────────────────────────────
+     Named for the job, because the job is what light re-tunes: dark ink on
+     paper at the same alpha as white ink on obsidian does not weigh the same. */
+  --fill-row: rgba(255, 255, 255, 0.026);
+  --fill-ghost: rgba(255, 255, 255, 0.03);
+  --fill-quiet: rgba(255, 255, 255, 0.035);
+  --fill-input: rgba(255, 255, 255, 0.04);
+  --fill-sunken: rgba(255, 255, 255, 0.045);
+  --fill-hover: rgba(255, 255, 255, 0.055);
+  --fill-menu: rgba(255, 255, 255, 0.06);
+  --fill-hover-hi: rgba(255, 255, 255, 0.07);
+  --fill-track: rgba(255, 255, 255, 0.08);
+  /* blind-test masking: shape without content (SPEC §7) */
+  --masked-stripe: rgba(255, 255, 255, 0.022);
+
+  /* ── text ─────────────────────────────────────────────────────────────── */
+  --text-hi: rgba(255, 255, 255, 0.92);
+  --text-mid: rgba(255, 255, 255, 0.56);
+  --text-lo: rgba(255, 255, 255, 0.3);
+  --text-faint: rgba(255, 255, 255, 0.16);
+
+  /* ── accent ───────────────────────────────────────────────────────────────
+     Rewritten by `theme.ts` on every apply. These are SPEC §4's champagne —
+     `--gold-2` as the accent and `--gold` as its deep form — and are exactly
+     what the derivation returns for the default `#c9a227`. */
+  --accent: #ccd8e1;
+  --accent-rgb: 204 216 225;
+  --accent-hi: #dde6ed;
+  --accent-hi-rgb: 221 230 237;
+  --accent-press: #a8b6bf;
+  --accent-deep: #91a8b7;
+  --accent-deep-rgb: 145 168 183;
+  /* what to print on an accent fill; `theme.ts` picks the side by contrast */
+  --ink-on-accent-dark: var(--ink-900);
+  --ink-on-accent-light: #f6f2e6;
+  --accent-ink: var(--ink-on-accent-dark);
+  /* legacy names from SPEC §4's palette list, kept as aliases so anything
+     already reading them keeps working and stays themed */
+  --gold: var(--accent-deep);
+  --gold-2: var(--accent);
+  --selection: rgb(var(--accent-rgb) / 0.22);
+
+  /* ── decks ────────────────────────────────────────────────────────────────
+     A is the accent; B is cold steel and must stay instantly separable from it,
+     so `theme.ts` rotates B away if a custom accent invades its hue.
+     `--deck-b-src` is the theme's declared steel and is never overwritten. */
+  --deck-a: var(--accent);
+  --deck-b-src: #c49cac;
+  --deck-b: #c49cac;
+  --deck-b-rgb: 196 156 172;
+  --deck-b-ink: #08131a;
+
+  /* ── meter scale (SPEC §4) ────────────────────────────────────────────── */
+  --m-safe: #6fcf97;
+  --m-safe-rgb: 111 207 151;
+  /* SPEC §4 meter scale stop at -6 dB */
+  --m-warn: #e8d9a0;
+  --m-warn-rgb: 232 217 160;
+  --m-hot: #e07a5f;
+  --m-hot-rgb: 224 122 95;
+  --m-clip: #d64545;
+  --m-clip-rgb: 214 69 69;
+  /* the loudest colour in the app: a destructive action's hover text */
+  --m-clip-hi: #ff8f8f;
+  --m-hot-ink: #120a08;
+
+  /* Windows 11's own close-button red, in both themes: it is a platform
+     affordance, not part of this palette. */
+  --winctl-close: #c42b1c;
+  --winctl-close-ink: #ffffff;
+
+  /* elevation — a single soft ambient shadow, only on floating panels */
+  --shadow-float: 0 24px 60px rgba(0, 0, 0, 0.62), 0 2px 0 rgba(255, 255, 255, 0.03) inset;
+
+  /* The select's chevron: a data URI cannot read a variable, so the whole
+     image is the token. */
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.2'/></svg>");
+
+  /* ═════════════════════════════════════════════════════════════════════════
+     Canvas — SPEC §14
+
+     A 2D context cannot read a variable, so `lib/theme.ts` resolves this group
+     explicitly on first paint and again on every theme change. It is a group
+     of its own because canvas needs *different* answers from the DOM: alphas
+     tuned against the field it draws on, an unplayed scrim that darkens on
+     obsidian and lightens on paper, and a blend mode that adds light in the
+     dark theme but must take it away in the light one.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* waveform lanes. The bar ink levels are per-theme numbers, because how much
+     of the lane's colour each layer gets is precisely what changes on paper. */
+  --wf-outer-a: 0.46;
+  --wf-core-a: 0.96;
+  --wf-cap-a: 0.34;
+  --wf-glow-a: 0.14;
+  --wf-decode-a: 0.34;
+  --wf-playhead-a: 0.95;
+  --wf-blend: lighter;
+  --wf-mid: rgba(255, 255, 255, 0.07);
+  --wf-skeleton: rgba(255, 255, 255, 0.05);
+  --wf-scrim: rgba(8, 8, 10, 0.66);
+  --wf-gap-fill: rgba(255, 255, 255, 0.018);
+  --wf-gap-line: rgba(255, 255, 255, 0.16);
+  --wf-gap-text: rgba(255, 255, 255, 0.3);
+  --wf-hover-line: rgba(255, 255, 255, 0.24);
+  --wf-playhead-idle: rgba(255, 255, 255, 0.35);
+  /* which colour a lane is drawn in */
+  --lane-a-rgb: var(--accent-rgb);
+  --lane-b-rgb: var(--deck-b-rgb);
+  --lane-masked-rgb: 188 188 196;
+  /* how far the lane that is *not* audible recedes (A/B on, SPEC §7) */
+  --lane-idle-o: 0.52;
+
+  --loop-fill: rgb(var(--accent-deep-rgb) / 0.1);
+  --loop-edge: rgb(var(--accent-rgb) / 0.5);
+  --loop-grip: rgb(var(--accent-rgb) / 0.9);
+  --align-chip: rgb(var(--deck-b-rgb) / 0.95);
+  --align-chip-ink: var(--deck-b-ink);
+  --align-line: rgb(var(--deck-b-rgb) / 0.85);
+
+  /* the read-outs canvases draw on themselves */
+  --tip-bg: rgba(10, 10, 13, 0.92);
+  --tip-line: rgba(255, 255, 255, 0.12);
+  --tip-text: rgba(255, 255, 255, 0.92);
+
+  /* level meter */
+  --mt-track: rgba(255, 255, 255, 0.035);
+  --mt-grid: rgba(255, 255, 255, 0.055);
+  --mt-grid-zero: rgba(255, 255, 255, 0.14);
+  --mt-label: rgba(255, 255, 255, 0.24);
+  --mt-label-zero: rgba(255, 255, 255, 0.34);
+  --mt-rms: rgba(255, 255, 255, 0.16);
+  --mt-chan: rgba(255, 255, 255, 0.3);
+  --mt-safe: rgb(var(--m-safe-rgb) / 0.42);
+  --mt-safe-lo: rgb(var(--m-safe-rgb) / 0.6);
+  --mt-warn: rgb(var(--m-warn-rgb) / 0.85);
+  --mt-hot: rgb(var(--m-hot-rgb) / 0.95);
+  --mt-clip: rgb(var(--m-clip-rgb) / 0.98);
+
+  /* loudness strip */
+  --lu-track: rgba(255, 255, 255, 0.045);
+  --lu-safe: rgb(var(--m-safe-rgb) / 0.5);
+  --lu-warn: rgb(var(--m-warn-rgb) / 0.72);
+  --lu-hot: rgb(var(--m-hot-rgb) / 0.85);
+  --lu-clip: rgb(var(--m-clip-rgb) / 0.9);
+  --lu-target: rgb(var(--accent-rgb) / 0.4);
+  --lu-target-label: rgb(var(--accent-rgb) / 0.5);
+  --lu-short: rgb(var(--deck-b-rgb) / 0.95);
+  --lu-int: var(--accent);
+
+  /* correlation */
+  --corr-track: rgba(255, 255, 255, 0.05);
+  --corr-neg: rgb(var(--m-clip-rgb) / 0.75);
+  --corr-mid: rgba(255, 255, 255, 0.2);
+  --corr-pos: rgb(var(--m-safe-rgb) / 0.8);
+  --corr-centre: rgba(255, 255, 255, 0.22);
+  --corr-needle-neg: var(--m-hot);
+  --corr-needle-pos: var(--accent);
+
+  /* EQ curve (a separate webview, the same sheet and the same tokens) */
+  --eq-grid-minor: rgba(255, 255, 255, 0.028);
+  --eq-grid-major: rgba(255, 255, 255, 0.06);
+  --eq-grid-zero: rgba(255, 255, 255, 0.12);
+  --eq-freq-label: rgba(255, 255, 255, 0.26);
+  --eq-db-label: rgba(255, 255, 255, 0.2);
+  --eq-spec-top: rgb(var(--accent-rgb) / 0.085);
+  --eq-spec-bottom: rgb(var(--accent-deep-rgb) / 0.035);
+  --eq-spec-edge: rgb(var(--accent-rgb) / 0.12);
+  --eq-spec-peak: rgb(var(--accent-rgb) / 0.07);
+  --eq-band: rgb(var(--accent-rgb) / 0.16);
+  --eq-band-hot: rgb(var(--accent-rgb) / 0.42);
+  --eq-curve: rgb(var(--accent-rgb) / 0.95);
+  --eq-curve-off: rgba(255, 255, 255, 0.2);
+  --eq-fill-top: rgb(var(--accent-rgb) / 0.1);
+  --eq-fill-bottom: rgb(var(--accent-rgb) / 0.03);
+  --eq-fill-off-top: rgba(255, 255, 255, 0.02);
+  --eq-fill-off-bottom: rgba(255, 255, 255, 0.01);
+  --eq-node-glow: rgb(var(--accent-rgb) / 0.22);
+  --eq-node-fill: rgba(12, 12, 15, 0.9);
+  --eq-node-fill-off: rgba(12, 12, 15, 0.75);
+  --eq-node-ring: rgb(var(--accent-rgb) / 0.95);
+  --eq-node-ring-off: rgba(255, 255, 255, 0.28);
+  --eq-tip-line: rgb(var(--accent-rgb) / 0.24);
+  --solo-band: rgb(var(--m-hot-rgb) / 0.2);
+  --solo-line: rgb(var(--m-hot-rgb) / 0.85);
+  --solo-chip: rgb(var(--m-hot-rgb) / 0.92);
+  --solo-chip-ink: var(--m-hot-ink);
+}
+
+/* Light: warm stone, Morandi mist-blue controls and dusty-rose reference deck. */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ink-900: #e8e5df;
+  --ink-850: #e2dfd9;
+  --ink-800: #eeebe5;
+  --ink-700: #f3f0ea;
+
+  --surface-panel: rgba(240, 237, 231, 0.98);
+  --surface-menu: rgba(244, 241, 235, 0.99);
+  --surface-toast: rgba(240, 237, 231, 0.98);
+  --surface-badge: rgba(240, 237, 231, 0.96);
+  --surface-card: rgba(240, 237, 231, 0.99);
+
+  --scrim: rgba(45, 47, 48, 0.32);
+  --scrim-drop: rgba(45, 47, 48, 0.24);
+
+  --stage-glow-a: rgba(0, 0, 0, 0);
+  --stage-glow-b: rgba(0, 0, 0, 0);
+  --bg-app:
+    radial-gradient(1200px 620px at 18% -12%, var(--stage-glow-a), transparent 62%),
+    radial-gradient(900px 520px at 105% 8%, var(--stage-glow-b), transparent 60%), var(--ink-900);
+  --bg-eq:
+    radial-gradient(900px 480px at 12% -18%, rgb(var(--accent-rgb) / 0.07), transparent 62%),
+    radial-gradient(700px 420px at 108% 12%, rgb(var(--deck-b-rgb) / 0.05), transparent 60%),
+    var(--ink-900);
+
+  --bg-titlebar: linear-gradient(105deg, rgba(171, 150, 157, 0.1), rgba(145, 168, 183, 0.1));
+  --bg-stage: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(48, 47, 44, 0.025));
+  --bg-transport: linear-gradient(105deg, rgba(171, 150, 157, 0.05), rgba(145, 168, 183, 0.05)), var(--ink-850);
+  --bg-rail: var(--ink-900);
+
+  --well: rgba(48, 47, 44, 0.045);
+  --well-deep: rgba(48, 47, 44, 0.07);
+
+  --well-canvas: rgba(255, 255, 255, 0.14);
+
+  --hairline: rgba(67, 68, 65, 0.13);
+  --hairline-strong: rgba(67, 68, 65, 0.22);
+  --hairline-soft: rgba(67, 68, 65, 0.08);
+
+  --fill-row: rgba(67, 68, 65, 0.045);
+  --fill-ghost: rgba(67, 68, 65, 0.05);
+  --fill-quiet: rgba(67, 68, 65, 0.055);
+  --fill-input: rgba(67, 68, 65, 0.06);
+  --fill-sunken: rgba(67, 68, 65, 0.07);
+  --fill-hover: rgba(67, 68, 65, 0.08);
+  --fill-menu: rgba(67, 68, 65, 0.085);
+  --fill-hover-hi: rgba(67, 68, 65, 0.1);
+  --fill-track: rgba(67, 68, 65, 0.12);
+  --masked-stripe: rgba(67, 68, 65, 0.05);
+
+  --text-hi: rgba(35, 39, 42, 0.94);
+  --text-mid: rgba(35, 39, 42, 0.78);
+  --text-lo: rgba(35, 39, 42, 0.62);
+  --text-faint: rgba(35, 39, 42, 0.52);
+
+  --accent: #667d88;
+  --accent-rgb: 102 125 136;
+  --accent-hi: #536b77;
+  --accent-hi-rgb: 83 107 119;
+  --accent-press: #455d68;
+  --accent-deep: #3a515b;
+  --accent-deep-rgb: 58 81 91;
+  --ink-on-accent-dark: #232b41;
+  --ink-on-accent-light: #ffffff;
+  --accent-ink: var(--ink-on-accent-light);
+  --gold: var(--accent-deep);
+  --gold-2: var(--accent);
+  --selection: rgb(var(--accent-rgb) / 0.2);
+
+  --deck-a: var(--accent);
+  --deck-b-src: #967b85;
+  --deck-b: #967b85;
+  --deck-b-rgb: 150 123 133;
+  --deck-b-ink: #fff8fb;
+
+  --m-safe: #708996;
+  --m-safe-rgb: 112 137 150;
+  --m-warn: #a27a3c;
+  --m-warn-rgb: 162 122 60;
+  --m-hot: #ad6048;
+  --m-hot-rgb: 173 96 72;
+  --m-clip: #a53f35;
+  --m-clip-rgb: 165 63 53;
+  --m-clip-hi: #7c1109;
+  --m-hot-ink: #fff6f1;
+
+  --winctl-close: #c42b1c;
+  --winctl-close-ink: #ffffff;
+
+  --shadow-float: 0 12px 28px rgba(36, 38, 40, 0.14), 0 1px 3px rgba(36, 38, 40, 0.1);
+
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='rgba(35,39,42,0.5)' stroke-width='1.2'/></svg>");
+
+  --wf-outer-a: 0.82;
+  --wf-core-a: 1;
+  --wf-cap-a: 0.38;
+  --wf-glow-a: 0;
+  --wf-decode-a: 0.55;
+  --wf-playhead-a: 1;
+  --wf-blend: multiply;
+  --wf-mid: rgba(67, 68, 65, 0.16);
+  --wf-skeleton: rgba(67, 68, 65, 0.11);
+
+  --wf-scrim: rgba(232, 229, 223, 0.25);
+  --wf-gap-fill: rgba(67, 68, 65, 0.04);
+  --wf-gap-line: rgba(67, 68, 65, 0.28);
+  --wf-gap-text: rgba(35, 39, 42, 0.45);
+  --wf-hover-line: rgba(35, 39, 42, 0.38);
+  --wf-playhead-idle: rgba(35, 39, 42, 0.45);
+
+  --lane-a-rgb: var(--accent-deep-rgb);
+  --lane-b-rgb: var(--deck-b-rgb);
+  --lane-masked-rgb: 75 76 74;
+
+  --lane-idle-o: 0.78;
+
+  --loop-fill: rgb(var(--accent-deep-rgb) / 0.14);
+  --loop-edge: rgb(var(--accent-rgb) / 0.7);
+  --loop-grip: rgb(var(--accent-rgb) / 1);
+  --align-chip: rgb(var(--deck-b-rgb) / 1);
+  --align-chip-ink: var(--deck-b-ink);
+  --align-line: rgb(var(--deck-b-rgb) / 0.9);
+
+  --tip-bg: rgba(244, 241, 235, 0.99);
+  --tip-line: rgba(67, 68, 65, 0.22);
+  --tip-text: rgba(35, 39, 42, 0.94);
+
+  --mt-track: rgba(67, 68, 65, 0.08);
+  --mt-grid: rgba(67, 68, 65, 0.1);
+  --mt-grid-zero: rgba(67, 68, 65, 0.24);
+  --mt-label: rgba(35, 39, 42, 0.44);
+  --mt-label-zero: rgba(35, 39, 42, 0.62);
+
+  --mt-rms: rgba(35, 39, 42, 0.2);
+  --mt-chan: rgba(35, 39, 42, 0.5);
+  --mt-safe: rgb(var(--m-safe-rgb) / 0.66);
+  --mt-safe-lo: rgb(var(--m-safe-rgb) / 0.82);
+  --mt-warn: rgb(var(--m-warn-rgb) / 0.92);
+  --mt-hot: rgb(var(--m-hot-rgb) / 0.96);
+  --mt-clip: rgb(var(--m-clip-rgb) / 1);
+
+  --lu-track: rgba(67, 68, 65, 0.09);
+  --lu-safe: rgb(var(--m-safe-rgb) / 0.72);
+  --lu-warn: rgb(var(--m-warn-rgb) / 0.86);
+  --lu-hot: rgb(var(--m-hot-rgb) / 0.92);
+  --lu-clip: rgb(var(--m-clip-rgb) / 0.96);
+  --lu-target: rgb(var(--accent-rgb) / 0.6);
+  --lu-target-label: rgb(var(--accent-rgb) / 0.8);
+  --lu-short: rgb(var(--deck-b-rgb) / 1);
+  --lu-int: var(--accent);
+
+  --corr-track: rgba(67, 68, 65, 0.1);
+  --corr-neg: rgb(var(--m-clip-rgb) / 0.82);
+  --corr-mid: rgba(35, 39, 42, 0.24);
+  --corr-pos: rgb(var(--m-safe-rgb) / 0.85);
+  --corr-centre: rgba(35, 39, 42, 0.3);
+  --corr-needle-neg: var(--m-hot);
+  --corr-needle-pos: var(--accent);
+
+  --eq-grid-minor: rgba(67, 68, 65, 0.08);
+  --eq-grid-major: rgba(67, 68, 65, 0.15);
+  --eq-grid-zero: rgba(67, 68, 65, 0.28);
+  --eq-freq-label: rgba(35, 39, 42, 0.5);
+  --eq-db-label: rgba(35, 39, 42, 0.4);
+
+  --eq-spec-top: rgba(150, 123, 133, 0.12);
+  --eq-spec-bottom: rgba(150, 123, 133, 0.025);
+  --eq-spec-edge: rgba(150, 123, 133, 0.28);
+  --eq-spec-peak: rgba(150, 123, 133, 0.16);
+  --eq-band: rgb(var(--accent-rgb) / 0.34);
+  --eq-band-hot: rgb(var(--accent-rgb) / 0.7);
+  --eq-curve: rgb(var(--accent-rgb) / 1);
+  --eq-curve-off: rgba(35, 39, 42, 0.3);
+
+  --eq-fill-top: rgb(var(--accent-rgb) / 0.11);
+  --eq-fill-bottom: rgb(var(--accent-rgb) / 0.035);
+  --eq-fill-off-top: rgba(35, 39, 42, 0.05);
+  --eq-fill-off-bottom: rgba(35, 39, 42, 0.02);
+  --eq-node-glow: rgb(var(--accent-rgb) / 0.26);
+
+  --eq-node-fill: rgba(244, 241, 235, 0.99);
+  --eq-node-fill-off: rgba(244, 241, 235, 0.8);
+  --eq-node-ring: rgb(var(--accent-rgb) / 1);
+  --eq-node-ring-off: rgba(35, 39, 42, 0.34);
+  --eq-tip-line: rgb(var(--accent-rgb) / 0.4);
+  --solo-band: rgb(var(--m-hot-rgb) / 0.22);
+  --solo-line: rgb(var(--m-hot-rgb) / 0.95);
+  --solo-chip: rgb(var(--m-hot-rgb) / 1);
+  --solo-chip-ink: var(--m-hot-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Fonts (§15)
+
+   Tokens, not families: `data-ui-font` / `data-num-font` select a stack made
+   only of faces the platform ships, so nothing is fetched and nothing silently
+   falls back to Times. An unknown value keeps the default stack. Every numeric
+   option is monospaced — the read-outs are tabular and must stay
+   column-stable.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root[data-ui-font="grotesk"] {
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+}
+:root[data-ui-font="humanist"] {
+  --font-ui: "Avenir Next", Avenir, Corbel, "Segoe UI", "Gill Sans", sans-serif;
+}
+:root[data-ui-font="neutral"] {
+  --font-ui: Inter, Roboto, "Noto Sans", "Segoe UI", "DejaVu Sans", sans-serif;
+}
+
+:root[data-num-font="sf-mono"] {
+  --font-num: "SF Mono", SFMono-Regular, ui-monospace, monospace;
+}
+:root[data-num-font="menlo"] {
+  --font-num: Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+}
+:root[data-num-font="consolas"] {
+  --font-num: Consolas, "Lucida Console", "DejaVu Sans Mono", monospace;
+}
+:root[data-num-font="courier"] {
+  --font-num: "Courier New", Courier, "Nimbus Mono PS", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base
+   ═════════════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ink-900);
+  color: var(--text-hi);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+/* thin, near-invisible scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fill-hover-hi);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fill-track);
+  background-clip: content-box;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ── focus ─────────────────────────────────────────────────────────────────
+   Onyx is driven from the keyboard, so a keyboard focus ring must be loud
+   enough to find on an obsidian background — the UA ring here computes to
+   `auto 1px rgb(16,16,16)`, which is either invisible or, once Chromium
+   decides to paint it, a stark white rectangle nothing else in the app owns.
+   One accent hairline ring instead, on `:focus-visible` only.
+
+   `:focus` without `:focus-visible` gets nothing: a control clicked with the
+   mouse must not read as engaged afterwards. `lib/focus.ts` also drops DOM
+   focus after a pointer click, so a later `Space` cannot resurrect a ring on
+   a button the user has long since finished with. */
+:focus-visible {
+  outline: 1px solid rgb(var(--accent-rgb) / 0.9);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── shared primitives ─────────────────────────────────────────────────── */
+
+.label {
+  font-size: 10px;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-lo);
+  font-weight: 500;
+}
+
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--ls-num);
+}
+
+.dot {
+  color: var(--text-faint);
+  padding: 0 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.toast > span { min-width: 0; overflow-wrap: anywhere; }
+.toast-dismiss {
+  flex: none;
+  margin-left: auto;
+  min-width: 24px;
+  min-height: 24px;
+  color: var(--text-mid);
+  font-size: 18px;
+}
+.toast-dismiss:hover { color: var(--text-hi); }

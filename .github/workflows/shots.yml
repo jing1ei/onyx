@@ -1,0 +1,79 @@
+# Browser journeys and visual checks, run on demand.
+name: Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shots:
+    name: Browser journeys and screenshots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: install the chromium playwright drives
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: build the production and mock bundles
+        run: |
+          npm run build
+          npm run build:mock
+
+      - name: serve it
+        run: |
+          npx vite preview --outDir dist-mock --host 127.0.0.1 --port 4173 --strictPort &
+          npx vite preview --outDir dist --host 127.0.0.1 --port 4174 --strictPort &
+          for _ in $(seq 1 60); do
+            curl -sSf http://127.0.0.1:4173 >/dev/null && curl -sSf http://127.0.0.1:4174 >/dev/null && break
+            sleep 1
+          done
+          curl -sSf http://127.0.0.1:4173 >/dev/null
+          curl -sSf http://127.0.0.1:4174 >/dev/null
+
+      - name: UI interaction regressions
+        run: npm run check:ui -- http://127.0.0.1:4173 --production-url http://127.0.0.1:4174
+
+      - name: Older WebKit API fallbacks
+        env:
+          ONYX_LEGACY_WEBKIT: '1'
+        run: npm run check:ui -- http://127.0.0.1:4173
+
+      - name: Waveform transitions
+        run: npm run check:motion -- http://127.0.0.1:4173
+
+      - name: WebKit waveform transitions
+        env:
+          ONYX_BROWSER: webkit
+        run: npm run check:motion -- http://127.0.0.1:4173
+
+      - name: WebKit interactions
+        env:
+          ONYX_BROWSER: webkit
+        run: npm run check:ui -- http://127.0.0.1:4173 --production-url http://127.0.0.1:4174
+
+      - name: shots — layout, gestures, the four routes onto deck B
+        run: npm run shots -- http://127.0.0.1:4173
+
+      - name: shots:theme — both themes, accents, canvas repaint, persistence
+        run: npm run shots:theme -- http://127.0.0.1:4173
+
+      - name: shots:themedoc — the theme document, end to end
+        run: npm run shots:themedoc -- http://127.0.0.1:4173
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: onyx-screenshots
+          path: shots/
+          if-no-files-found: error
+          retention-days: 30

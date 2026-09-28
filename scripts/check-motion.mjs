@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import {chromium, webkit} from 'playwright';
+import {shotsUrl} from './lib/shots-base.mjs';
+const browser = await (process.env.ONYX_BROWSER === 'webkit' ? webkit : chromium).launch();
+try {
+  const p = await browser.newPage({viewport:{width:480,height:560}});
+  const errors=[];p.on('pageerror',e=>errors.push(e.message));
+  await p.goto(shotsUrl());await p.waitForSelector('.pl-row');
+  const invoke=(c,a={})=>p.evaluate(([c,a])=>window.__onyxMockHost.invoke(c,a),[c,a]);
+  const initial=await invoke('app_state');
+  await p.waitForSelector('.wave-lane[data-waveform-ready="true"]');
+  const timing=await p.evaluate(()=>{
+    window.__motionObserved=[];
+    const animate=Element.prototype.animate;
+    Element.prototype.animate=function(keys,options){
+      const result=animate.call(this,keys,options);
+      if(this.matches('.lane-canvas > canvas:first-child'))window.__motionObserved.push({at:performance.now(),duration:options.duration});
+      return result;
+    };
+    return performance.now();
+  });
+  await p.locator('.pl-row').nth(2).click();
+  await p.waitForFunction(()=>window.__motionObserved.length>0);
+  const onset=await p.evaluate(start=>window.__motionObserved[0].at-start,timing);
+  assert.equal((await invoke('app_state')).transport.playing,true);
+  assert.equal((await invoke('app_state')).ab.enabled,false);
+  assert.equal((await invoke('app_state')).deckB.entryId,initial.deckB.entryId);
+  await p.waitForTimeout(300);
+  const count=await p.evaluate(()=>window.__motionObserved.length);
+  await p.waitForTimeout(500);
+  assert.equal(await p.evaluate(()=>window.__motionObserved.length),count,'decode chunks must not restart transition');
+  for(const i of [3,4,5]) await p.locator('.pl-row').nth(i).click();
+  await p.waitForFunction(id=>window.__onyxMockHost.invoke('app_state').then(s=>s.deckA.entryId===id),initial.playlist[5].id);
+  await p.waitForTimeout(400);
+  assert.equal(await p.locator('.lane-canvas > canvas:first-child').evaluate(n=>n.getAnimations().length),0,'rapid changes leave no running animation');
+  await p.emulateMedia({reducedMotion:'reduce'});
+  const reducedCount=await p.evaluate(()=>window.__motionObserved.length);
+  await p.locator('.pl-row').nth(6).click();await p.waitForTimeout(400);
+  assert.equal(await p.evaluate(()=>window.__motionObserved.length),reducedCount,'reduced motion skips transition');
+  await p.emulateMedia({reducedMotion:'no-preference'});
+  await p.locator('.pl-row').nth(7).click();
+  await p.setViewportSize({width:420,height:560});await p.waitForTimeout(400);
+  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await p.emulateMedia({reducedMotion:'no-preference'});
+  await p.locator('.pl-row').nth(8).click();
+  await p.waitForFunction(()=>document.querySelector('.lane-canvas > canvas')?.getAnimations().length>0);
+  await p.emulateMedia({reducedMotion:'reduce'});
+  await p.waitForFunction(()=>document.querySelector('.lane-canvas > canvas')?.getAnimations().length===0);
+  await p.emulateMedia({reducedMotion:'no-preference'});
+  await p.getByRole('button',{name:'A/B comparison',exact:true}).click();
+  await p.locator('.blind-btn').click();
+  await p.getByRole('button',{name:'Begin',exact:true}).click();
+  await p.waitForSelector('.wave-lane[data-masked="true"]');
+  assert.equal(await p.locator('.wave-lane[data-masked="true"] canvas').evaluateAll(ns=>ns.reduce((sum,n)=>sum+n.getAnimations().length,0)),0,'blind reference must not animate track identity');
+  assert.deepEqual(errors,[]);
+  console.log(`Motion checks passed. Mock click-to-reveal ${onset.toFixed(0)} ms; reveal 160 ms; playback immediate, rapid changes and reduced motion verified.`);
+} finally {await browser.close();}

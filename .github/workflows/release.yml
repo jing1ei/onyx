@@ -1,0 +1,205 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: "11.3"
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Resolve package version
+        id: tag
+        run: |
+          node scripts/check-version.mjs v1.0.0
+          echo "tag=v1.0.0" >> "$GITHUB_OUTPUT"
+          echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+      - name: Record immutable build commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libasound2-dev libssl-dev pkg-config build-essential
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-verify
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python .github/scripts/test_release.py
+      - run: npm ci
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: node scripts/check-version.mjs "$RELEASE_TAG"
+      - run: npm run build
+      - run: npm run check:release
+      - run: python scripts/check-signing.py
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: npm run package:source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onyx-1.0.0-source
+          path: artifacts/onyx-${{ steps.tag.outputs.version }}-source.zip*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  build:
+    name: ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal
+            os: macos-15
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg -- --locked
+            artifact: macOS-universal
+          - name: Windows x64
+            os: windows-2022
+            targets: x86_64-pc-windows-msvc
+            args: --target x86_64-pc-windows-msvc --bundles nsis -- --locked
+            artifact: Windows-x64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.os }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Configure optional Apple signing
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: python scripts/configure-signing.py
+      - name: Build release packages
+        run: npm run tauri build -- ${{ matrix.args }}
+      - name: Verify and collect macOS packages
+        if: runner.os == 'macOS'
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          app=target/universal-apple-darwin/release/bundle/macos/Onyx.app
+          node scripts/check-macos-bundle.mjs "$app"
+          mkdir -p release-assets
+          shopt -s nullglob
+          dmgs=(target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+          test "${#dmgs[@]}" -eq 1
+          cp "${dmgs[0]}" "release-assets/Onyx-${VERSION}-macOS-universal.dmg"
+          status=unsigned
+          if [[ -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
+            codesign --verify --deep --strict "$app"
+            codesign --verify --strict "${dmgs[0]}"
+            status=signed
+            if [[ -n "${APPLE_ID:-}" ]]; then
+              xcrun stapler validate "$app"
+              spctl --assess --type execute --verbose "$app"
+              status='signed and notarized'
+            fi
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$app" "release-assets/Onyx-${VERSION}-macOS-universal.app.zip"
+          echo "$status" > release-assets/macos-signing.txt
+      - name: Verify and collect Windows packages
+        if: runner.os == 'Windows'
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem 'target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe')
+          if ($installers.Count -ne 1) { throw 'Expected exactly one NSIS installer' }
+          $binary = 'target/x86_64-pc-windows-msvc/release/onyx.exe'
+          if (-not (Test-Path $binary)) { throw 'Missing application executable' }
+          $config = Get-Content 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json
+          $mustSign = $config.bundle.windows.certificateThumbprint -or $config.bundle.windows.signCommand
+          $statuses = @($binary, $installers[0].FullName) | ForEach-Object { (Get-AuthenticodeSignature $_).Status.ToString() }
+          if ($mustSign -and @($statuses | Where-Object { $_ -ne 'Valid' }).Count) { throw 'Configured Authenticode signing did not validate' }
+          if (@($statuses | Where-Object { $_ -ne 'Valid' -and $_ -ne 'NotSigned' }).Count) { throw 'Invalid Authenticode signature' }
+          if (@($statuses | Select-Object -Unique).Count -ne 1) { throw 'Application and installer signing states differ' }
+          New-Item release-assets -ItemType Directory -Force | Out-Null
+          Copy-Item $installers[0].FullName "release-assets/Onyx-$($env:VERSION)-Windows-x64.exe"
+          $status = if ($statuses[0] -eq 'Valid') { 'signed' } else { 'unsigned' }
+          Set-Content release-assets/windows-signing.txt $status -Encoding utf8NoBOM
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onyx-1.0.0-${{ matrix.artifact }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  publish:
+    name: Publish 1.0.0
+    needs: [verify, build]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Onyx-1.0.0-*
+          merge-multiple: true
+          path: release-assets
+      - name: Publish verified packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/release.py release-assets
