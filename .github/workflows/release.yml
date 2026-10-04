@@ -24,10 +24,10 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
       sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -52,7 +52,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-verify
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python .github/scripts/test_release.py
@@ -68,7 +68,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: npm run package:source
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Onyx-1.0.0-source
           path: artifacts/onyx-${{ steps.tag.outputs.version }}-source.zip*
@@ -96,7 +96,7 @@ jobs:
             args: --target x86_64-pc-windows-msvc --bundles nsis -- --locked
             artifact: Windows-x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.sha }}
           persist-credentials: false
@@ -106,11 +106,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ matrix.os }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: npm ci
@@ -173,7 +173,7 @@ jobs:
           Copy-Item $installers[0].FullName "release-assets/Onyx-$($env:VERSION)-Windows-x64.exe"
           $status = if ($statuses[0] -eq 'Valid') { 'signed' } else { 'unsigned' }
           Set-Content release-assets/windows-signing.txt $status -Encoding utf8NoBOM
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Onyx-1.0.0-${{ matrix.artifact }}
           path: release-assets/*
@@ -190,11 +190,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: Onyx-1.0.0-*
           merge-multiple: true
