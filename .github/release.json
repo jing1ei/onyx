@@ -1,0 +1,14 @@
+{
+  "project": "Onyx",
+  "assets": {
+    "Onyx-{version}-macOS-universal.dmg": "Onyx-{version}-macOS-universal.dmg",
+    "Onyx-{version}-macOS-universal.app.zip": "Onyx-{version}-macOS-universal.app.zip",
+    "Onyx-{version}-Windows-x64.exe": "Onyx-{version}-Windows-x64.exe",
+    "Onyx-{version}-source.zip": "onyx-{version}-source.zip"
+  },
+  "extras": [
+    "macos-signing.txt",
+    "windows-signing.txt"
+  ],
+  "notes": "Onyx {version}. macOS-universal runs on Intel and Apple silicon (macOS 11.3+); Windows-x64 is the installer for 64-bit Windows 10/11. SHA256SUMS.txt covers every attached file. See the README for installation, signing status and third-party notices."
+}

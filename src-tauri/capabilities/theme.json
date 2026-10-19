@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "theme",
+  "description": "Least privilege for the theme editor window (SPEC §20). A third webview, so it needs its own capability, and it gets exactly the three the EQ window gets: `listen` / `unlisten` so it can follow `onyx://state` (the theme document and appearance in force, so the editor shows what is really applied and follows a reset made anywhere else), and `emit` for `onyx://client-log` (SPEC §13). Deliberately absent: `core:webview:allow-create-webview-window`, so the editor cannot conjure windows — it is created from Rust (`src-tauri/src/themewindow.rs`) through the `theme_window_*` commands, and there can only ever be one. Also absent: the `core:window:*` chrome set, because this window keeps its native decorations on purpose — it is the window you use to recover from a theme that has made the main window unreadable, so its title bar, its close button and its native Appearance menu must be drawn by the window manager rather than by the theme being edited. No clipboard permission either: Copy for agent uses `navigator.clipboard` in the webview, which asks Tauri for nothing. Application commands (`#[tauri::command]`) are not gated by capabilities, so `set_theme_doc`, `set_appearance` and `reset_appearance` work without widening anything here.",
+  "local": true,
+  "windows": ["theme"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit"
+  ]
+}

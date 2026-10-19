@@ -1,0 +1,34 @@
+name: Feature request
+description: Something Onyx should do that it does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Onyx is a player and a comparison tool, not a music manager — a library,
+        a database, tag editing and playlist management are out of scope by
+        design, and the README's **Known limitations** says which other things
+        are deliberate. That is not a "no", but say why it belongs here anyway.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The listening problem
+      description: >
+        What are you trying to hear, decide or measure that Onyx makes hard
+        today? Describe the situation rather than the feature — the moment at
+        the desk usually suggests a smaller change than the feature does.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How you work around it now
+      description: Another tool, a different workflow, or nothing.
+    validations:
+      required: false

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+const conf = JSON.parse(read('src-tauri/tauri.conf.json'));
+assert.equal(conf.bundle.macOS.minimumSystemVersion, '11.3');
+assert.equal(conf.bundle.windows.webviewInstallMode.type, 'embedBootstrapper');
+assert.equal(conf.bundle.windows.minimumWebview2Version, '109.0.1518.0');
+assert.match(read('vite.config.ts'), /target: \["safari14\.1", "chrome109"\]/);
+assert.match(read('.github/workflows/ci.yml'), /macos-15-intel/);
+assert.match(read('.github/workflows/release.yml'), /--target x86_64-pc-windows-msvc --bundles nsis/);
+assert.match(read('scripts/build-mac.sh'), /MACOSX_DEPLOYMENT_TARGET=11\.3/);
+console.log('Platform contract: Big Sur 11.3, Intel/ARM64, Windows x64, and WebView2 prerequisites agree.');

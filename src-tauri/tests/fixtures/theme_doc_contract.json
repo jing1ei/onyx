@@ -1,0 +1,110 @@
+{
+  "$comment": [
+    "How a theme document is *stored* — SPEC §20. Onyx has two backends: the",
+    "engine (src-tauri/src/settings.rs, normalise_theme_doc) and the mock the",
+    "browser preview and the screenshot harness run against (src/lib/mock.ts).",
+    "Both are held to this file:",
+    "  Rust: src-tauri/src/settings.rs::the_theme_doc_storage_contract_holds",
+    "  TS:   scripts/check-theme.mjs, section 'mock ↔ engine parity'",
+    "Storage is the only opinion either backend has about a theme; what a",
+    "document *means* is src/lib/themedoc.ts, once.",
+    "",
+    "`text` is the argument to set_theme_doc. `build` makes the long inputs a",
+    "literal cannot carry: `unit` repeated `times`, with `prefix` in front.",
+    "`stored` is what must come back out of the snapshot; `\"=input\"` means the",
+    "input unchanged. `rejected: true` means the command must fail loudly."
+  ],
+  "maxBytes": 262144,
+  "cases": [
+    {
+      "name": "a document is stored verbatim",
+      "text": "{ \"onyx\": \"theme\", \"dark\": { \"text-hi\": \"#fff\" } }",
+      "stored": "=input"
+    },
+    {
+      "name": "comments and newlines survive — a theme is source, not data",
+      "text": "// Cold Graphite\n{\n\t\"onyx\": \"theme\",\r\n\t\"version\": 1,\n}",
+      "stored": "=input"
+    },
+    {
+      "name": "surrounding ASCII whitespace is trimmed",
+      "text": "  \n\t{ \"onyx\": \"theme\" }\r\n  ",
+      "stored": "{ \"onyx\": \"theme\" }"
+    },
+    {
+      "name": "null clears the theme",
+      "text": null,
+      "stored": null
+    },
+    {
+      "name": "an empty box clears the theme",
+      "text": "",
+      "stored": null
+    },
+    {
+      "name": "whitespace only clears the theme",
+      "text": " \t\r\n ",
+      "stored": null
+    },
+    {
+      "name": "a NUL byte is refused",
+      "text": "{ \"onyx\": \"theme\" }\u0000",
+      "rejected": true
+    },
+    {
+      "name": "an ANSI escape is refused",
+      "text": "\u001b[2J{ \"onyx\": \"theme\" }",
+      "rejected": true
+    },
+    {
+      "name": "DEL is refused",
+      "text": "{ \"onyx\": \"\u007f\" }",
+      "rejected": true
+    },
+    {
+      "name": "a C1 control is refused — Cc does not stop at U+007F",
+      "text": "{ \"onyx\": \"theme\" }\u0085",
+      "rejected": true
+    },
+    {
+      "name": "a vertical tab is refused — only tab, LF and CR lay a document out",
+      "text": "{ \"onyx\":\u000b\"theme\" }",
+      "rejected": true
+    },
+    {
+      "name": "a non-breaking space is text, not whitespace, and is kept",
+      "text": "{ \"onyx\":\u00a0\"theme\" }",
+      "stored": "=input"
+    },
+    {
+      "name": "a leading BOM is kept — JS trims it, Rust does not, so neither may",
+      "text": "\ufeff{ \"onyx\": \"theme\" }",
+      "stored": "=input"
+    },
+    {
+      "name": "a lone NEL is a control character, not blankness",
+      "text": "\u0085",
+      "rejected": true
+    },
+    {
+      "name": "exactly the limit is stored",
+      "build": { "prefix": "//", "unit": "x", "times": 262142 },
+      "stored": "=input"
+    },
+    {
+      "name": "one byte over the limit is refused",
+      "build": { "prefix": "//", "unit": "x", "times": 262143 },
+      "rejected": true
+    },
+    {
+      "name": "the limit counts bytes, not characters",
+      "build": { "prefix": "//", "unit": "\u2014", "times": 100000 },
+      "rejected": true
+    },
+    {
+      "name": "100k characters that fit in the byte budget are stored",
+      "build": { "prefix": "//", "unit": "\u00e9", "times": 100000 },
+      "stored": "=input"
+    }
+  ]
+}

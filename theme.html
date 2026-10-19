@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- both themes are designed (SPEC §14); the resolved one is set on
+         <html> by src/lib/theme.ts -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The theme editor (SPEC §20), the third document in the same bundle.
+
+      It deliberately does *not* apply the theme document being edited: this is
+      the window you use when a pasted theme has made the other windows
+      unreadable, so it renders in Onyx's own designed appearance whatever the
+      document says. See src/theme/main.tsx.
+    -->
+    <link rel="icon" type="image/png" href="/src-tauri/icons/32x32.png" />
+    <title>Onyx — Theme</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/theme/main.tsx"></script>
+  </body>
+</html>
