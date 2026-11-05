@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "eq",
+  "description": "Least privilege for the detached EQ window (SPEC §12). It is a second webview, so it needs its own capability — a capability applies only to the windows it names, and without this file the EQ window could not even subscribe to `onyx://frame` and would draw an empty analyser. It gets three permissions and no more: `listen` / `unlisten` for the frame, state, toast and `onyx://eq-window` streams of SPEC §3.2, and `emit` for `onyx://client-log` (SPEC §13), which is the only way this webview can report an error into the Rust log file. Deliberately absent: `core:webview:allow-create-webview-window` — the EQ window is created from Rust (`src-tauri/src/eqwindow.rs`) through the `eq_window_*` commands, so neither webview can conjure windows, and there can only ever be one EQ window. Also absent, unlike the main window's capability: the `core:window:*` drag / minimise / maximise / close set, because this window keeps its native decorations and does not draw its own chrome. Application commands (`#[tauri::command]`) are not gated by capabilities, so the EQ panel can still call `set_eq`, `set_eq_audition` and `set_spectrum_enabled` without widening anything here.",
+  "local": true,
+  "windows": ["eq"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit"
+  ]
+}

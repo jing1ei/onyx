@@ -1,0 +1,29 @@
+{
+  "_": "Assignment changes material only; the comparison switch is controlled separately.",
+  "cases": [
+    {
+      "name": "assigning deck B preserves A/B False",
+      "deck": "b",
+      "abEnabledBefore": false,
+      "abEnabledAfter": false
+    },
+    {
+      "name": "assigning deck B preserves A/B True",
+      "deck": "b",
+      "abEnabledBefore": true,
+      "abEnabledAfter": true
+    },
+    {
+      "name": "assigning deck A preserves A/B False",
+      "deck": "a",
+      "abEnabledBefore": false,
+      "abEnabledAfter": false
+    },
+    {
+      "name": "assigning deck A preserves A/B True",
+      "deck": "a",
+      "abEnabledBefore": true,
+      "abEnabledAfter": true
+    }
+  ]
+}

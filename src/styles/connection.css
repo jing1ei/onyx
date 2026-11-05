@@ -1,0 +1,23 @@
+.connection-error {
+  position: fixed;
+  z-index: 120;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw / var(--zoom, 1) - 32px));
+  padding: 24px;
+  display: grid;
+  gap: 14px;
+  border-radius: var(--r-panel);
+  background: var(--surface-panel);
+  color: var(--text-hi);
+  box-shadow: var(--shadow-float);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.connection-error button {
+  padding: 10px 16px;
+  border-radius: var(--r-control);
+  background: var(--accent);
+  color: var(--ink-900);
+}
