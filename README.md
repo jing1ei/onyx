@@ -2,7 +2,7 @@
 
 ![Onyx app icon — pink and blue glass](src-tauri/icons/128x128.png)
 
-**Hear the difference between two mixes.** · 1.0.0
+**Hear the difference between two mixes.** · 1.0.1
 
 A desktop audio player for critical listening: switch between two tracks at the
 same moment, match their loudness, inspect the signal, and test yourself blind.

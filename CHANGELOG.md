@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Refined waveform and transport controls and refreshed the documentation and screenshots.
+- Updated automatic release packaging to use the app version and verify uploaded files before publishing.
+
 ## 1.0.0
 
 - Two-deck A/B comparison with a shared playhead, level matching, time
