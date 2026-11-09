@@ -170,13 +170,19 @@ jobs:
       - name: npx tauri build --bundles deb
         run: npx tauri build --bundles deb -- --locked
 
-      - name: what came out
-        run: ls -l target/release/bundle/deb/
+      - name: Name Linux smoke-test package
+        run: |
+          version=$(node -p "require('./package.json').version")
+          mkdir -p smoke-downloads
+          shopt -s nullglob
+          packages=(target/release/bundle/deb/*.deb)
+          test "${#packages[@]}" -eq 1
+          cp "${packages[0]}" "smoke-downloads/Onyx-$version-Linux-x64.deb"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Onyx-Linux-x64-smoke-test
-          path: target/release/bundle/deb/*.deb
+          path: smoke-downloads/*.deb
           if-no-files-found: error
           retention-days: 7
 
@@ -230,11 +236,18 @@ jobs:
           dmgs=(target/${{ matrix.target }}/debug/bundle/dmg/*.dmg)
           test "${#dmgs[@]}" -eq 1
           cp "${dmgs[0]}" "smoke-downloads/Onyx-$version-${{ matrix.platform }}.dmg"
+      - name: Name Windows smoke-test installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installers = @(Get-ChildItem 'target/x86_64-pc-windows-msvc/debug/bundle/nsis/*.exe')
+          if ($installers.Count -ne 1) { throw 'Expected exactly one NSIS installer' }
+          New-Item smoke-downloads -ItemType Directory -Force | Out-Null
+          Copy-Item $installers[0].FullName "smoke-downloads/Onyx-$version-Windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: Onyx-${{ matrix.platform }}-smoke-test
-          path: |
-            smoke-downloads/*.dmg
-            target/x86_64-pc-windows-msvc/debug/bundle/nsis/*.exe
+          path: smoke-downloads/*
           if-no-files-found: error
           retention-days: 7

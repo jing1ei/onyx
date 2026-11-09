@@ -21,9 +21,9 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.config = {'project': 'Fixture', 'notes': 'Fixture release', 'assets': {
-            'Fixture-1.0.0-macOS-universal.zip': 'mac.zip',
-            'Fixture-1.0.0-Windows-x64.zip': 'win.zip',
-            'Fixture-1.0.0-source.zip': 'source.zip'}}
+            f'Fixture-{release.VERSION}-macOS-universal.zip': 'mac.zip',
+            f'Fixture-{release.VERSION}-Windows-x64.zip': 'win.zip',
+            f'Fixture-{release.VERSION}-source.zip': 'source.zip'}}
         self.source = self.root / 'input'
         self.source.mkdir()
         for name in self.config['assets'].values():
@@ -35,6 +35,12 @@ class ReleaseTests(unittest.TestCase):
         self.fail_upload = False
         self.corrupt = False
         self.heads = ['built', 'built']
+        self.untagged = False
+        self.reuse_uploads = False
+        self.asset_ids = {
+            name: i + 100 for i, name in enumerate(
+                sorted(list(self.config['assets']) + ['SHA256SUMS.txt']))
+        }
 
     def ready(self):
         return release.prepare(self.source, self.root / 'ready', self.config)
@@ -44,31 +50,40 @@ class ReleaseTests(unittest.TestCase):
         if endpoint.endswith('/git/ref/heads/main'):
             return {'object': {'sha': self.heads.pop(0)}}
         if '/matching-refs/' in endpoint:
-            return [{'ref': 'refs/tags/' + release.TAG, 'object': {'sha': self.tag_sha}}] if self.existing else []
+            return [{'ref': 'refs/tags/' + release.TAG, 'object': {'sha': self.tag_sha}}] if self.existing and not self.untagged else []
         if '/releases' in endpoint:
             return {'id': 7, 'draft': True}
         return {}
 
     def pages(self, endpoint):
         if '/assets?' in endpoint:
-            return [{'name': 'old-name.zip', 'id': 42}]
-        return [{'id': 7, 'tag_name': release.TAG, 'draft': not self.published}] if self.existing else []
+            return [{'name': 'old-name.zip', 'id': 42}] + [
+                {'name': name, 'id': asset_id,
+                 'digest': 'sha256:' + release.digest(self.root / 'ready' / name) if self.reuse_uploads else None}
+                for name, asset_id in self.asset_ids.items()
+            ]
+        return [{
+            'id': 7, 'tag_name': 'untagged-fixture' if self.untagged else release.TAG,
+            'draft': not self.published, 'name': release.VERSION, 'target_commitish': 'built'
+        }] if self.existing else []
 
     def gh(self, *args, **kwargs):
         self.calls.append(('gh', args, None))
         if args[:2] == ('release', 'upload') and self.fail_upload:
             raise RuntimeError('Upload failed')
-        if args[:2] == ('release', 'download'):
-            destination = Path(args[args.index('--dir') + 1])
-            for path in (self.root / 'ready').iterdir():
-                shutil.copyfile(path, destination / path.name)
-            if self.corrupt:
-                (destination / 'Fixture-1.0.0-Windows-x64.zip').write_bytes(b'corrupt')
         return ''
+
+    def gh_bytes(self, endpoint):
+        self.calls.append(('download', endpoint, None))
+        asset_id = int(endpoint.rsplit('/', 1)[1])
+        name = next(name for name, value in self.asset_ids.items() if value == asset_id)
+        if self.corrupt and name.endswith('Windows-x64.zip'):
+            return b'corrupt'
+        return (self.root / 'ready' / name).read_bytes()
 
     def publish(self):
         directory = self.ready()
-        with patch.object(release, 'api', self.api), patch.object(release, 'pages', self.pages), patch.object(release, 'gh', self.gh):
+        with patch.object(release, 'api', self.api), patch.object(release, 'pages', self.pages), patch.object(release, 'gh', self.gh), patch.object(release, 'gh_bytes', self.gh_bytes):
             release.publish(directory, self.config, 'built', 'owner/repo')
 
     def assert_unpublished(self):
@@ -104,7 +119,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.calls[-1][2]['name'], release.VERSION)
         self.assertFalse(self.calls[-1][2]['draft'])
         upload = next(i for i,c in enumerate(self.calls) if c[0]=='gh' and c[1][:2]==('release','upload'))
-        download = next(i for i,c in enumerate(self.calls) if c[0]=='gh' and c[1][:2]==('release','download'))
+        download = next(i for i,c in enumerate(self.calls) if c[0]=='download')
         tag = next(i for i,c in enumerate(self.calls) if c[0]=='POST' and c[1].endswith('/git/refs'))
         self.assertLess(upload, download)
         self.assertLess(download, tag)
@@ -117,6 +132,23 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(any(m=='DELETE' and e.endswith('/assets/42') for m,e,_ in self.calls))
         first = next(p for m,e,p in self.calls if m=='PATCH' and '/releases/' in e)
         self.assertTrue(first['draft'])
+        self.assertFalse(self.calls[-1][2]['draft'])
+
+    def test_untagged_draft_resumes_and_verifies_assets_by_id(self):
+        self.existing = self.untagged = True
+        self.publish()
+        self.assertFalse(any(m == 'POST' and e.endswith('/releases') for m, e, _ in self.calls))
+        update = next(p for m, e, p in self.calls if m == 'PATCH' and '/releases/' in e)
+        self.assertEqual(update['tag_name'], release.TAG)
+        self.assertTrue(any(m == 'download' for m, _, _ in self.calls))
+        self.assertFalse(any(m == 'gh' and e[:2] == ('release', 'download') for m, e, _ in self.calls))
+        self.assertFalse(self.calls[-1][2]['draft'])
+
+    def test_retry_reuses_matching_uploads_and_still_checks_bytes(self):
+        self.existing = self.untagged = self.reuse_uploads = True
+        self.publish()
+        self.assertFalse(any(m == 'gh' and e[:2] == ('release', 'upload') for m, e, _ in self.calls))
+        self.assertEqual(sum(m == 'download' for m, _, _ in self.calls), len(self.asset_ids))
         self.assertFalse(self.calls[-1][2]['draft'])
 
     def test_published_release_is_never_modified(self):
@@ -159,7 +191,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_local_corruption_never_contacts_github(self):
         directory = self.ready()
-        (directory / 'Fixture-1.0.0-Windows-x64.zip').write_bytes(b'bad')
+        (directory / f'Fixture-{release.VERSION}-Windows-x64.zip').write_bytes(b'bad')
         with patch.object(release, 'api') as api:
             with self.assertRaises(ValueError):
                 release.publish(directory, self.config, 'built', 'owner/repo')

@@ -1,5 +1,6 @@
 """Prepare and publish the complete release for the current package version after a main build."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import fnmatch
 import hashlib
 import json
@@ -7,7 +8,6 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = json.loads((ROOT / 'package.json').read_text())['version']
@@ -70,6 +70,12 @@ def gh(*args, payload=None):
     return result.stdout
 
 
+def gh_bytes(endpoint):
+    return subprocess.run(
+        ['gh', 'api', '-H', 'Accept: application/octet-stream', endpoint],
+        capture_output=True, check=True).stdout
+
+
 def api(endpoint, method='GET', payload=None):
     args = ['api', endpoint, '--method', method]
     if payload is not None:
@@ -99,7 +105,12 @@ def publish(directory, config, sha, repo, notes=''):
             raise ValueError('A newer main commit exists; this build will not replace its release')
 
     current()
-    releases = [r for r in pages(prefix + '/releases?per_page=100') if r['tag_name'] == TAG]
+    releases = [
+        r for r in pages(prefix + '/releases?per_page=100')
+        if r['tag_name'] == TAG or (
+            r['draft'] and r.get('name') == VERSION and r.get('target_commitish') == sha
+        )
+    ]
     if len(releases) > 1:
         raise ValueError(f'Multiple releases use {TAG}')
     if releases and not releases[0]['draft']:
@@ -112,24 +123,42 @@ def publish(directory, config, sha, repo, notes=''):
         raise ValueError(f'{TAG} already points at another commit; bump the version')
     body = notes or config['notes']
     body += f'\n\nBuilt from `{sha}`.\n'
-    metadata = dict(name=VERSION, body=body, draft=True, prerelease='-' in VERSION)
+    metadata = dict(name=VERSION, body=body, draft=True, prerelease='-' in VERSION,
+                    tag_name=TAG, target_commitish=sha)
     if releases:
         release = api(prefix + f"/releases/{releases[0]['id']}", 'PATCH', metadata)
     else:
-        release = api(prefix + '/releases', 'POST', dict(metadata, tag_name=TAG, target_commitish=sha))
-    gh('release', 'upload', TAG, '--repo', repo, '--clobber',
-       *(str(directory / name) for name in sorted(expected)))
-    # Check what GitHub stored, including resumed uploads, before publishing.
-    with tempfile.TemporaryDirectory() as temporary:
-        args = ['release', 'download', TAG, '--repo', repo, '--dir', temporary]
-        for name in expected:
-            args += ['--pattern', name]
-        gh(*args)
-        for name, checksum in expected.items():
-            if digest(Path(temporary) / name) != checksum:
-                raise ValueError(f'Uploaded checksum mismatch: {name}')
+        release = api(prefix + '/releases', 'POST', metadata)
+    uploaded = {
+        asset['name']: asset
+        for asset in pages(prefix + f"/releases/{release['id']}/assets?per_page=100")
+    }
+    pending = [
+        directory / name for name, checksum in expected.items()
+        if uploaded.get(name, {}).get('digest') != 'sha256:' + checksum
+    ]
+    if pending:
+        gh('release', 'upload', TAG, '--repo', repo, '--clobber',
+           *(str(path) for path in pending))
+        uploaded = {
+            asset['name']: asset
+            for asset in pages(prefix + f"/releases/{release['id']}/assets?per_page=100")
+        }
+
+    # Draft tags can become untagged-*. Asset IDs remain stable, including on
+    # retries that reuse identical uploads. Always verify the actual bytes.
+    def verify_asset(item):
+        name, checksum = item
+        if name not in uploaded:
+            raise ValueError(f'Missing uploaded asset: {name}')
+        data = gh_bytes(prefix + f"/releases/assets/{uploaded[name]['id']}")
+        if hashlib.sha256(data).hexdigest() != checksum:
+            raise ValueError(f'Uploaded checksum mismatch: {name}')
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(verify_asset, expected.items()))
     current()
-    for asset in pages(prefix + f"/releases/{release['id']}/assets?per_page=100"):
+    for asset in uploaded.values():
         if asset['name'] not in expected:
             api(prefix + f"/releases/assets/{asset['id']}", 'DELETE')
     if not refs:
