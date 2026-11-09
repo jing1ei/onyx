@@ -81,11 +81,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS universal
+          - name: macOS Apple silicon
             os: macos-15
-            targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --target universal-apple-darwin --bundles app,dmg -- --locked
-            artifact: macOS-universal
+            targets: aarch64-apple-darwin
+            target: aarch64-apple-darwin
+            arch: arm64
+            args: --target aarch64-apple-darwin --bundles dmg -- --locked
+            artifact: macOS-arm64
+          - name: macOS Intel
+            os: macos-15-intel
+            targets: x86_64-apple-darwin
+            target: x86_64-apple-darwin
+            arch: x86_64
+            args: --target x86_64-apple-darwin --bundles dmg -- --locked
+            artifact: macOS-x64
           - name: Windows x64
             os: windows-2022
             targets: x86_64-pc-windows-msvc
@@ -128,13 +137,13 @@ jobs:
           VERSION: ${{ needs.verify.outputs.version }}
         run: |
           set -euo pipefail
-          app=target/universal-apple-darwin/release/bundle/macos/Onyx.app
-          node scripts/check-macos-bundle.mjs "$app"
+          app=target/${{ matrix.target }}/release/bundle/macos/Onyx.app
+          node scripts/check-macos-bundle.mjs "$app" "${{ matrix.arch }}"
           mkdir -p release-assets
           shopt -s nullglob
-          dmgs=(target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+          dmgs=(target/${{ matrix.target }}/release/bundle/dmg/*.dmg)
           test "${#dmgs[@]}" -eq 1
-          cp "${dmgs[0]}" "release-assets/Onyx-${VERSION}-macOS-universal.dmg"
+          cp "${dmgs[0]}" "release-assets/Onyx-${VERSION}-${{ matrix.artifact }}.dmg"
           status=unsigned
           if [[ -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
             codesign --verify --deep --strict "$app"
@@ -146,8 +155,7 @@ jobs:
               status='signed and notarized'
             fi
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$app" "release-assets/Onyx-${VERSION}-macOS-universal.app.zip"
-          echo "$status" > release-assets/macos-signing.txt
+          echo "$status" > release-assets/${{ matrix.artifact }}-signing.txt
       - name: Verify and collect Windows packages
         if: runner.os == 'Windows'
         env:

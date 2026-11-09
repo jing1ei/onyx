@@ -189,9 +189,17 @@ jobs:
       matrix:
         include:
           - os: macos-15
-            platform: macOS-universal
-            targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --debug --target universal-apple-darwin --bundles app -- --locked
+            platform: macOS-arm64
+            target: aarch64-apple-darwin
+            arch: arm64
+            targets: aarch64-apple-darwin
+            args: --debug --target aarch64-apple-darwin --bundles dmg -- --locked
+          - os: macos-15-intel
+            platform: macOS-x64
+            target: x86_64-apple-darwin
+            arch: x86_64
+            targets: x86_64-apple-darwin
+            args: --debug --target x86_64-apple-darwin --bundles dmg -- --locked
           - os: windows-2022
             platform: Windows-x64
             targets: x86_64-pc-windows-msvc
@@ -210,17 +218,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run tauri build -- ${{ matrix.args }}
-      - name: Universal architecture and deployment target
+      - name: Native architecture and deployment target
         if: runner.os == 'macOS'
-        run: node scripts/check-macos-bundle.mjs target/universal-apple-darwin/debug/bundle/macos/Onyx.app
-      - name: Preserve macOS bundle permissions
+        run: node scripts/check-macos-bundle.mjs target/${{ matrix.target }}/debug/bundle/macos/Onyx.app ${{ matrix.arch }}
+      - name: Name macOS disk image
         if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent target/universal-apple-darwin/debug/bundle/macos/Onyx.app target/Onyx-macOS-universal-debug.app.zip
+        run: |
+          version=$(node -p "require('./package.json').version")
+          mkdir -p smoke-downloads
+          shopt -s nullglob
+          dmgs=(target/${{ matrix.target }}/debug/bundle/dmg/*.dmg)
+          test "${#dmgs[@]}" -eq 1
+          cp "${dmgs[0]}" "smoke-downloads/Onyx-$version-${{ matrix.platform }}.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: Onyx-${{ matrix.platform }}-smoke-test
           path: |
-            target/Onyx-macOS-universal-debug.app.zip
+            smoke-downloads/*.dmg
             target/x86_64-pc-windows-msvc/debug/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 7

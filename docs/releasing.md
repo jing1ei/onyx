@@ -1,11 +1,12 @@
+> The current public package formats and names are defined in [Package contract](../.github/PACKAGING.md).
+
 # Building and releasing
 
 [← Overview](../README.md) · [Developer setup](../CONTRIBUTING.md)
 
 ## Local packages
 
-Run `./scripts/build-mac.sh` on macOS for a universal `.app` and `.dmg`
-(output: `target/universal-apple-darwin/release/bundle/`), or
+Run `./scripts/build-mac.sh` on macOS for a native `.app` and `.dmg`, or
 `./scripts/build-mac.sh --arm64` for an Apple-silicon-only build in about half
 the time (output: `target/aarch64-apple-darwin/release/bundle/`). The script
 sets deployment target 11.3 and checks the CPU slices and the bundle's minimum
@@ -28,16 +29,16 @@ Every push to `main` runs CI and the Release workflow
 
 1. **verify** — version consistency, front-end checks, `cargo fmt`, `clippy`,
    `cargo test`, and the source ZIP.
-2. **build** — the universal macOS `.dmg` / `.app.zip` and the Windows x64
+2. **build** — the Apple silicon and Intel macOS DMGs and the Windows x64
    installer, each verified before upload.
 3. **publish** — `.github/scripts/release.py` collects the packages named in
    `.github/release.json`, writes `SHA256SUMS.txt`, uploads everything into a
    draft release, downloads it again to verify every checksum, creates the
    `v<version>` tag at the built commit, and publishes.
 
-Release assets are named `Onyx-<version>-macOS-universal.dmg`,
-`Onyx-<version>-macOS-universal.app.zip`, `Onyx-<version>-Windows-x64.exe`, and
-`Onyx-<version>-source.zip`, plus the two signing-status files and
+Release assets are named `Onyx-<version>-macOS-arm64.dmg`,
+`Onyx-<version>-macOS-x64.dmg`, `Onyx-<version>-Windows-x64.exe`, and
+`Onyx-<version>-source.zip`, plus platform signing-status files and
 `SHA256SUMS.txt`. Workflow artifacts are kept for 14 days.
 
 Rules the publisher enforces:

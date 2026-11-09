@@ -23,6 +23,19 @@ same moment, match their loudness, inspect the signal, and test yourself blind.
 | Listen without seeing the answer | Blind A/B and ABX tests |
 | Explore a frequency range | A separate EQ window with spectrum and band solo |
 
+## Download packages
+
+Choose the package for your computer from [GitHub Releases](https://github.com/jing1ei/onyx/releases/latest).
+
+| Computer | Package |
+| --- | --- |
+| Mac with Apple silicon | `Onyx-1.0.2-macOS-arm64.dmg` |
+| Mac with Intel | `Onyx-1.0.2-macOS-x64.dmg` |
+| Windows x64 | `Onyx-1.0.2-Windows-x64.exe` |
+
+On macOS, open the DMG and drag the app to Applications. On Windows, run the EXE installer.
+Each release includes one source ZIP and `SHA256SUMS.txt`.
+
 ## Download
 
 Get a build from **[Releases](../../releases)**, or
@@ -138,7 +151,7 @@ For a UI-only preview: `npm run dev:mock`.
 ## Building releases
 
 ```sh
-# macOS: universal app and disk image
+# macOS: native app and disk image
 ./scripts/build-mac.sh
 # macOS: Apple silicon only (faster local build)
 ./scripts/build-mac.sh --arm64

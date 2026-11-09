@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Build the macOS release of Onyx: a universal (Apple silicon + Intel) .app and
+# Build the macOS release of Onyx: a native (Apple silicon or Intel) .app and
 # a .dmg. Run this on macOS — cross-compiling a Cocoa/WKWebView app from Linux
 # is not supported by Tauri.
 #
-#   ./scripts/build-mac.sh            # universal .app + .dmg (the release build)
+#   ./scripts/build-mac.sh            # native .app + .dmg (the release build)
 #   ./scripts/build-mac.sh --arm64    # Apple silicon only, about half the time
 #
 # `scripts/build-windows.ps1` is this script's opposite number and checks the
@@ -15,7 +15,7 @@ export MACOSX_DEPLOYMENT_TARGET=11.3
 
 cd "$(dirname "$0")/.."
 
-target=universal-apple-darwin
+target=$([[ "$(uname -m)" == arm64 ]] && echo aarch64-apple-darwin || echo x86_64-apple-darwin)
 rust_targets=(aarch64-apple-darwin x86_64-apple-darwin)
 case "${1:-}" in
   "") ;;
