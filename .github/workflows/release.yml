@@ -86,14 +86,14 @@ jobs:
             targets: aarch64-apple-darwin
             target: aarch64-apple-darwin
             arch: arm64
-            args: --target aarch64-apple-darwin --bundles dmg -- --locked
+            args: --target aarch64-apple-darwin --bundles app,dmg -- --locked
             artifact: macOS-arm64
           - name: macOS Intel
             os: macos-15-intel
             targets: x86_64-apple-darwin
             target: x86_64-apple-darwin
             arch: x86_64
-            args: --target x86_64-apple-darwin --bundles dmg -- --locked
+            args: --target x86_64-apple-darwin --bundles app,dmg -- --locked
             artifact: macOS-x64
           - name: Windows x64
             os: windows-2022
